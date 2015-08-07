@@ -40,6 +40,18 @@
       (format t "~A " (pretty-cell (aref (board-grid board) x y))))
     (format t "~%")))
 
+(defun copy-grid (board)
+  (let ((grid (empty-grid)))
+    (dotimes (x *board-width*)
+      (dotimes (y *board-height*)
+	(setf (aref grid x y) (aref (board-grid board) x y))))
+    grid))
+
+(defun clone-board (board)
+  (let ((copy (copy-board board)))
+    (setf (board-grid copy) (copy-grid board))
+    copy))
+
 (defun rnd ()
   (prog1 (logand (ash *seed* -16) #x7fff)
     (setf *seed* (mod (+ (* *seed* 1103515245) 12345) (expt 2 32)))))
@@ -69,13 +81,25 @@
   (with-open-file (problem (format nil "problems/problem_~A.json" number))
     (json:decode-json problem)))
 
+(defun pos-2-cube (point)
+  (let* ((x (pos-x point))
+	 (y (pos-y point))
+	 (xx (- x (/ (- y (logand y 1)) 2))))
+    (list xx (- (- xx) y) y)))
+
+(defun cube-2-pos (cube)
+  (let ((xx (first cube))
+	(zz (third cube)))
+    (make-pos :x (+ xx (/ (- zz (logand zz 1)) 2)) :y zz)))
+
+(defun rotate-cube (cube)
+  (list (- (third cube)) (- (first cube)) (- (second cube))))
+
 (defun rotate-point (pivot point)
-  (let* ((x (- (pos-x point) (pos-x pivot)))
-	 (y (- (pos-y point) (pos-y pivot)))
-	 (a (- x (/ (- y (logand y 1)) 2)))
-	 (b (+ a y)))
-    (make-pos :x (+ (pos-x pivot) (+ (- y) (/ (- b (logand b 1)) 2)))
-	      :y (+ (pos-y pivot) b))))
+  (let* ((cube-pivot (pos-2-cube pivot))
+	 (normalized (mapcar #'- (pos-2-cube point) cube-pivot))
+	 (rotated-cube (mapcar #'+ cube-pivot (rotate-cube normalized))))
+    (cube-2-pos rotated-cube)))
 
 (defun generate-rotations (pivot config)
   (dotimes (i 5)
@@ -109,7 +133,6 @@
 	 (id (get-item :id data))
 	 (new-board (empty-board)))
     (parse-board data new-board)
-    (format t "~A~%" *units*)
     (when with-gui
       (run-gui new-board))
     (dolist (*seed* (get-item :source-seeds data))
