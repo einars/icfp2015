@@ -6,13 +6,18 @@
 	   :make-pos :pos-x :pos-y :pos-add :pos-sub
 	   :make-piece :copy-piece :piece-pivot :piece-offset
 	   :piece-turn :piece-number :piece-config
-	   :empty-grid :empty-board :copy-board))
+	   :empty-grid :empty-board :copy-board
+	   :board-update :board-update-board :continue-processing))
 
 (in-package :icfp/state)
 
 (defvar *board-width*)
 (defvar *board-height*)
 (defvar *total-moves*)
+
+(define-condition board-update ()
+  ((new-board :initarg :new-board
+	      :reader board-update-board)))
 
 (defstruct pos x y)
 

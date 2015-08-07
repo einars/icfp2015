@@ -186,63 +186,74 @@
     (replace-figure pivot (board-active-cells new-board)))
   (setf *move-history* nil))
 
-(defun run-gui (init-board)
+(defun run-gui (init-board update-fn)
+  (start-wish)
   (let ((*last-figure* nil)
 	(*canvas* nil)
 	(*filled-cells* (make-array (list *board-width* *board-height*) :initial-element nil))
 	(*move-history* nil))
-    (with-ltk ()
-      (let* ((board-scrolled-canvas (make-instance 'scrolled-canvas
-						   :width 800
-						   :height 800))
-	     (button-bar (make-instance 'frame
-					:width 800))
-	     (btn-undo (make-instance 'button 
-				   :master button-bar
-				   :text " Undo! "
-				   :command (lambda ()
-					      (undo-move))))
-	     (btn-e (make-instance 'button 
-				   :master button-bar
-				   :text "   E   "
-				   :command (lambda ()
-					      (move-e))))
-	     (btn-w (make-instance 'button 
-				   :master button-bar
-				   :text "   W   "
-				   :command (lambda ()
-					      (move-w))))
-	     (btn-se (make-instance 'button 
-				   :master button-bar
-				   :text "  SE   "
-				   :command (lambda ()
-					      (move-se))))
-	     (btn-sw (make-instance 'button 
-				   :master button-bar
-				   :text "  SW   "
-				   :command (lambda ()
-					      (move-sw))))
-	     (btn-cw (make-instance 'button 
-				   :master button-bar
-				   :text "  CW   "
-				   :command (lambda ()
-					      (rotate-cw))))
-	     (btn-ccw (make-instance 'button 
+    (let* ((board-scrolled-canvas (make-instance 'scrolled-canvas
+						 :width 800
+						 :height 800))
+	   (button-bar (make-instance 'frame
+				      :width 800))
+	   (btn-step (make-instance 'button 
+				    :master nil
+				    :text " Step "
+				    :command (lambda ()
+					       (invoke-restart 'continue-processing))))
+	   (btn-undo (make-instance 'button 
+				    :master button-bar
+				    :text " Undo! "
+				    :command (lambda ()
+					       (undo-move))))
+	   (btn-e (make-instance 'button 
+				 :master button-bar
+				 :text "   E   "
+				 :command (lambda ()
+					    (move-e))))
+	   (btn-w (make-instance 'button 
+				 :master button-bar
+				 :text "   W   "
+				 :command (lambda ()
+					    (move-w))))
+	   (btn-se (make-instance 'button 
+				  :master button-bar
+				  :text "  SE   "
+				  :command (lambda ()
+					     (move-se))))
+	   (btn-sw (make-instance 'button 
+				  :master button-bar
+				  :text "  SW   "
+				  :command (lambda ()
+					     (move-sw))))
+	   (btn-cw (make-instance 'button 
+				  :master button-bar
+				  :text "  CW   "
+				  :command (lambda ()
+					     (rotate-cw))))
+	   (btn-ccw (make-instance 'button 
 				   :master button-bar
 				   :text "  CCW  "
 				   :command (lambda ()
 					      (rotate-ccw)))))
-	(setf *canvas* (canvas board-scrolled-canvas))
-	(create-board-background *board-width* *board-height*)
-	(redraw-board init-board)
-	(replace-figure '(5 . 0) '(2 . 1)  '(5 . 0))
-	(pack board-scrolled-canvas :expand 1 :fill :both)
-	(scrollregion *canvas* 0 0 3000 3000)
-	(pack button-bar :side :top)
-	(pack btn-undo :side :left)
-	(pack btn-e :side :left)
-	(pack btn-w :side :left)
-	(pack btn-se :side :left)
-	(pack btn-sw :side :left)
-	(pack btn-cw :side :left)
-	(pack btn-ccw :side :left)))))
+      (setf *canvas* (canvas board-scrolled-canvas))
+      (create-board-background *board-width* *board-height*)
+      (redraw-board init-board)
+      (replace-figure '(5 . 0) '(2 . 1)  '(5 . 0))
+      (pack btn-step :side :top)
+      (pack board-scrolled-canvas :expand 1 :fill :both)
+      (scrollregion *canvas* 0 0 3000 3000)
+      (pack button-bar :side :top)
+      (pack btn-undo :side :left)
+      (pack btn-e :side :left)
+      (pack btn-w :side :left)
+      (pack btn-se :side :left)
+      (pack btn-sw :side :left)
+      (pack btn-cw :side :left)
+      (pack btn-ccw :side :left)
+      (ignore-errors
+	(handler-bind ((board-update (lambda (c)
+				       (redraw-board (board-update-board c))
+				       (mainloop))))
+	  (funcall update-fn))))))

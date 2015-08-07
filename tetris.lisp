@@ -164,7 +164,11 @@
 	 (new-board (empty-board)))
     (parse-board data new-board)
     (when with-gui
-      (run-gui new-board))
+      (run-gui new-board (lambda ()
+			   (loop
+			      (format t "Hey Hey!~%")
+			      (with-simple-restart (continue-processing "Continue?")
+				   (signal 'board-update :new-board new-board))))))
     (dolist (*seed* (get-item :source-seeds data))
       (let ((*move-sequence* (generate-move-sequence)))
 	(format-solution id *seed* (get-solution))))))
