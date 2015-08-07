@@ -5,6 +5,9 @@
 
 (in-package :icfp/gui)
 
+;;; Timing
+(defparameter *auto-play-delay* 0.2)
+
 ;;; Geometry
 (defparameter *bg-honeycomb-r* 24)
 (defparameter *grid-x-step* 24)
@@ -26,6 +29,7 @@
 (defvar *canvas*)
 (defvar *filled-cells*)
 (defvar *move-history*)
+(defvar *auto-play-moves*)
 
 (defun create-honeycomb (x y r &key (color "gray70"))
   (let* ((height (* 2 r))
@@ -191,17 +195,32 @@
   (let ((*last-figure* nil)
 	(*canvas* nil)
 	(*filled-cells* (make-array (list *board-width* *board-height*) :initial-element nil))
-	(*move-history* nil))
+	(*move-history* nil)
+	(*auto-play-moves* 0))
     (let* ((board-scrolled-canvas (make-instance 'scrolled-canvas
 						 :width 800
 						 :height 800))
+	   (top-bar (make-instance 'frame
+				      :width 800))
 	   (button-bar (make-instance 'frame
 				      :width 800))
 	   (btn-step (make-instance 'button 
-				    :master nil
-				    :text " Step "
+				    :master top-bar
+				    :text "   Step   "
 				    :command (lambda ()
 					       (invoke-restart 'continue-processing))))
+	   (btn-step10 (make-instance 'button 
+				      :master top-bar
+				      :text " Step x10 "
+				      :command (lambda ()
+						 (setf *auto-play-moves* 10)
+						 (invoke-restart 'continue-processing))))
+	   (btn-step50 (make-instance 'button 
+				      :master top-bar
+				      :text " Step x50 "
+				      :command (lambda ()
+						 (setf *auto-play-moves* 50)
+						 (invoke-restart 'continue-processing))))
 	   (btn-undo (make-instance 'button 
 				    :master button-bar
 				    :text " Undo! "
@@ -240,7 +259,10 @@
       (setf *canvas* (canvas board-scrolled-canvas))
       (create-board-background *board-width* *board-height*)
       (redraw-board init-board)
-      (pack btn-step :side :top)
+      (pack top-bar :side :top)
+      (pack btn-step :side :left)
+      (pack btn-step10 :side :left)
+      (pack btn-step50 :side :left)
       (pack board-scrolled-canvas :expand 1 :fill :both)
       (scrollregion *canvas* 0 0 3000 3000)
       (pack button-bar :side :top)
@@ -254,5 +276,10 @@
       (ignore-errors
 	(handler-bind ((board-update (lambda (c)
 				       (redraw-board (board-update-board c))
-				       (mainloop))))
+				       (if (zerop *auto-play-moves*)
+					   (mainloop)
+					   (progn
+					     (decf *auto-play-moves*)
+					     (sleep *auto-play-delay*)
+					     (invoke-restart 'continue-processing))))))
 	  (funcall update-fn))))))
