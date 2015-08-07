@@ -25,6 +25,14 @@ let next_moves = function
   | MOVE_SW -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
   | TURN_CW -> [ MOVE_E ;          MOVE_SE ; MOVE_SW                       ]
   | TURN_CCW-> [          MOVE_W ; MOVE_SE ; MOVE_SW                       ]
+
+let first_moves = 
+  [ MOVE_SE ; MOVE_SW ]
+
+let next_moves = function
+  | MOVE_SE -> [  MOVE_SE ; MOVE_SW ]
+  | MOVE_SW -> [  MOVE_SE ; MOVE_SW ]
+  | _ -> []
 (*
 
 a.(0) - rindiņas
@@ -39,11 +47,12 @@ type state_t =
   ; width: int
   ; height: int
   ; field: field_t
+  ; initial_seed: int
   ; seed: int
   ; remaining: int (* inv sourceLength *)
   ; current_fig: figure_t option
   ; current_fig_offs: int*int
-  ; 
+  ; moves: move_t list
 }
 
 exception Locked of state_t
@@ -72,6 +81,20 @@ let freeze_figure state =
 ;;
 
 
+let s_of_moves moves = 
+  let mcs = List.map moves ~f:(function 
+    | MOVE_W -> "p"
+    | MOVE_E -> "b"
+    | MOVE_SW -> "a"
+    | MOVE_SE -> "m"
+    | TURN_CW -> "q"
+    | TURN_CCW -> "k"
+  ) in
+  String.concat mcs
+;;
+
+
+
 let print_state state =
 
   let s = freeze_figure state in
@@ -86,7 +109,8 @@ let print_state state =
     done;
     printf "\n";
   done;
-  printf "\n%!"
+  printf "\n%s\n%!" (s_of_moves s.moves)
+
 ;;
 
 
@@ -275,32 +299,26 @@ let turn_ccw (px, py) (x, y) =
 
 let moved_fig fig = function
   | MOVE_E ->
-      printf "move_e\n%!";
       { pivot = move_e fig.pivot
       ; members = List.map fig.members ~f:move_e
       }
   | MOVE_W ->
-      printf "move_w\n%!";
       { pivot = move_w fig.pivot
       ; members = List.map fig.members ~f:move_w
       }
   | MOVE_SE ->
-      printf "move_se\n%!";
       { pivot = move_se fig.pivot
       ; members = List.map fig.members ~f:move_se
       }
   | MOVE_SW ->
-      printf "move_sw\n%!";
       { pivot = move_sw fig.pivot
       ; members = List.map fig.members ~f:move_sw
       }
   | TURN_CW ->
-      printf "turn_cw\n%!";
       { pivot = fig.pivot
       ; members = List.map fig.members ~f:(fun pt -> turn_cw fig.pivot pt)
       }
   | TURN_CCW ->
-      printf "turn_ccw\n%!";
       { pivot = fig.pivot
       ; members = List.map fig.members ~f:(fun pt -> turn_ccw fig.pivot pt)
       }
@@ -318,37 +336,43 @@ let apply_move state (move:move_t) =
 let pick_best_move state =
 
 
-  let pool= ref []
-  and pool_final = ref [] in
+  let pool = ref []
 
-  let add_to_final_pool s =
-    pool_final := s :: !pool_final
+  and some_final = ref None in
+
+  let add_to_final_pool s moves =
+    some_final := Some (s, moves)
   in
 
-  let pool_move state last_move =
-    pool := (state, last_move) :: !pool
+  let pool_move state moves =
+    pool := (state, moves) :: !pool
   in
 
-  let rec consider_moves state moves =
-
+  let rec consider_moves state moves_so_far moves =
     let consider_move move =
-
       try 
         let next_state = apply_move state move in
-        pool_move next_state move
+        pool_move next_state (move :: moves_so_far)
       with
-        | Locked _ ->
-            printf "Locked\n%!";
-            print_state state;
-            add_to_final_pool state
+        | Locked _ -> add_to_final_pool state (move :: moves_so_far)
     in
-
     List.iter moves ~f:consider_move
   in
 
-  consider_moves state first_moves;
+  let rec move_ya () =
+    let old_pool = !pool in
+    pool := [];
+    List.iter old_pool ~f:(fun (s, m) -> consider_moves s m (next_moves (List.hd_exn m)));
+    if !pool <> [] then move_ya()
+    else !some_final
 
-  List.hd_exn !pool |> fst |> freeze_figure
+  in
+
+  consider_moves state [] first_moves;
+  match move_ya () with
+  | Some (st, fig_moves) -> let s = st |> freeze_figure in
+  { s with moves = List.append s.moves (List.rev fig_moves) }
+  | None -> raise Impossible
 ;;
 
 
@@ -380,12 +404,18 @@ let states_of_json json =
     field = make_filled_field w h filled;
     remaining = source_length;
     current_fig = None;
+    initial_seed = 0;
     seed = 0;
     current_fig_offs = 0,0;
+    moves = []
   } in
 
   List.map source_seeds ~f:(fun (seed) ->
-    { base_state with seed = Yojson.Basic.Util.to_int seed }
+    { base_state with 
+      seed = Yojson.Basic.Util.to_int seed;
+      initial_seed = Yojson.Basic.Util.to_int seed;
+    }
+
   )
 ;;
 

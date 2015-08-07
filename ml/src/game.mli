@@ -17,11 +17,12 @@ type state_t =
   ; width: int
   ; height: int
   ; field: field_t
+  ; initial_seed: int
   ; seed: int
   ; remaining: int (* inv sourceLength *)
   ; current_fig: figure_t option
   ; current_fig_offs: int*int
-  ; 
+  ; moves: move_t list
 }
 
 
@@ -37,3 +38,5 @@ val states_of_json: Basic.json -> state_t list
 
 val turn_cw: int*int -> int*int -> int*int
 val turn_ccw: int*int -> int*int -> int*int
+
+val s_of_moves: move_t list -> string
