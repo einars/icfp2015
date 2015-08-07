@@ -6,10 +6,13 @@
 (in-package :icfp/tetris)
 
 (defvar *seed* 0)
+(defvar *units* nil)
 (defvar *width* nil)
 (defvar *height* nil)
 
 (defstruct board grid)
+
+(defstruct piece pivot start cfg)
 
 (defun pretty-cell (number)
   (case number
@@ -64,10 +67,19 @@
   (with-open-file (problem (format nil "problems/problem_~A.json" number))
     (json:decode-json problem)))
 
+(defun parse-units (data)
+  (let* ((units (get-item :units data))
+	 (result (make-array (length units))))
+    (dotimes (i (length result) result)
+      (let* ((element (elt units i))
+	     (pivot (get-item :pivot element)))
+	(setf (aref result i) (make-piece :pivot pivot))))))
+
 (defun solve-problem (number)
   (let* ((data (read-problem number))
 	 (*width* (get-item :width data))
 	 (*height* (get-item :height data))
+	 (*units* (parse-units data))
 	 (id (get-item :id data))
 	 (new-board (empty-board)))
     (parse-board data new-board)
