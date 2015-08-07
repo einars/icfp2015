@@ -179,6 +179,11 @@
 	(with-simple-restart (continue-processing "Continue?")
 	  (signal 'board-update :new-board board)))))
 
+(defun solution-with-gui (board with-gui)
+  (if (not with-gui)
+      (get-solution board)
+      (run-gui board (lambda () (get-solution board)))))
+
 (defun solve-problem (number &key with-gui)
   (let* ((data (read-problem number))
 	 (*board-width* (get-item :width data))
@@ -192,4 +197,4 @@
     (dolist (*seed* (get-item :source-seeds data))
       (let ((*move-sequence* (generate-move-sequence)))
 	(init-board-pieces new-board (first *move-sequence*))
-	(format-solution id *seed* (get-solution new-board))))))
+	(format-solution id *seed* (solution-with-gui new-board with-gui))))))
