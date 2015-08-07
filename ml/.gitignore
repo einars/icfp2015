@@ -1,4 +1,7 @@
 _build
 main.native
+tetris
 *.cmx
 *.cmo
+*.o
+*.cmi

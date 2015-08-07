@@ -13,9 +13,18 @@ type figure_t =
   ; pivot: cell_t
   }
 
+type move_t = MOVE_E | MOVE_W | MOVE_SE | MOVE_SW | TURN_CW | TURN_CCW
 
+let first_moves = 
+  [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW ; TURN_CCW ]
 
-
+let next_moves = function
+  | MOVE_E ->  [ MOVE_E ;          MOVE_SE ; MOVE_SW ; TURN_CW             ]
+  | MOVE_W ->  [          MOVE_W ; MOVE_SE ; MOVE_SW            ; TURN_CCW ]
+  | MOVE_SE -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
+  | MOVE_SW -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
+  | TURN_CW -> [ MOVE_E ;          MOVE_SE ; MOVE_SW                       ]
+  | TURN_CCW-> [          MOVE_W ; MOVE_SE ; MOVE_SW                       ]
 (*
 
 a.(0) - rindiņas
@@ -38,6 +47,52 @@ type state_t =
 }
 
 exception Locked of state_t
+exception Impossible
+
+
+let freeze_figure state =
+
+  let clone_field field =
+    Array.init (Array.length field) (fun i -> Array.copy field.(i))
+  in
+
+
+  let new_field = clone_field state.field in
+  let ox, oy = state.current_fig_offs in
+  (match state.current_fig with
+    | Some fig -> 
+        List.iter fig.members ~f:(fun (x, y) -> new_field.(y + oy).(x + ox) <- true);
+    | None -> ()
+  );
+
+  { state with
+    current_fig = None;
+    field = new_field
+  }
+;;
+
+
+let print_state state =
+
+  let s = freeze_figure state in
+  
+  printf "%d×%d ID=%d, all_figs=%d, remaining=%d, seed=%d\n" s.width s.height s.id (List.length s.figures) s.remaining s.seed;
+  for row = 0 to s.height - 1 do
+    if (row % 2 = 1) then printf " ";
+    for col = 0 to s.width - 1 do
+
+      printf "%s" (if s.field.(row).(col) then "XX" else "··");
+
+    done;
+    printf "\n";
+  done;
+  printf "\n%!"
+;;
+
+
+
+
+
 
 let json_cell json =
   let open Yojson.Basic.Util in
@@ -132,43 +187,177 @@ let check_fig_placement state fig xoffs yoffs =
   List.iter fig.members ~f:check_fig_point
 ;;
 
-let clone_field field =
-  Array.init (Array.length field) (fun i -> Array.copy field.(i))
 
-let freeze_figure state =
-
-  let new_field = clone_field state.field in
-  let ox, oy = state.current_fig_offs in
-  (match state.current_fig with
-    | Some fig -> 
-        List.iter fig.members ~f:(fun (x, y) -> new_field.(y + oy).(x + ox) <- true);
-    | None -> ()
-  );
-
-  { state with
-    current_fig = None;
-    field = new_field
+let offset_fig fig xoffs yoffs =
+  let px, py = fig.pivot in
+  { members = List.map fig.members ~f:(fun (x,y) -> (x + xoffs), (y + yoffs) )
+  ; pivot   = (px + xoffs), (py + yoffs)
   }
+;;
 
 
+let validate_figure_state st =
+  match st.current_fig with
+  | Some fig ->
+    List.iter fig.members ~f:(fun (x,y) ->
+      if y < 0 then raise (Locked st);
+      if x < 0 then raise (Locked st);
+      if x >= st.width then raise (Locked st);
+      if y >= st.height then raise (Locked st);
+      if st.field.(y).(x) then raise (Locked st);
+    );
+    st
+  | None -> st
+;;
 
 
 let initially_place_figure state fig  =
   let xoffs, yoffs = initial_figure_offset state fig in
-  check_fig_placement state fig xoffs yoffs;
-  { state with
-    current_fig = Some fig;
-    current_fig_offs = xoffs, yoffs
-  }
+  let moved_figure = offset_fig fig xoffs yoffs in
+  let st = { state with current_fig = Some moved_figure } in
+  validate_figure_state st
+;;
 
+
+let move_e (x,y) = x + 1, y
+let move_w (x,y) = x - 1, y
+let move_sw (x,y) = x + (if y % 2 = 1 then -1 else 0), y + 1
+let move_se (x,y) = x + (if y % 2 = 1 then  1 else 0), y + 1
+
+let turn_cw (px, py) (x, y) =
+
+  (* pivot 2d to cube *)
+  let xxpiv = px - (py - py % 2) / 2 in
+  let zzpiv = py in
+  let yypiv = - xxpiv - zzpiv in
+  
+  (* point 2d to cube *)
+  let xx = x - (y - y % 2) / 2 in
+  let zz = y in
+  let yy = - xx - zz in
+
+  (* adjust pivot *)
+  let xx, yy, zz = xx - xxpiv, yy - yypiv, zz - zzpiv in
+
+  (* rotate *)
+  let xx, yy, zz = -zz, -xx, -yy in
+
+  (* readjust pivot *)
+  let xx, yy, zz = xx + xxpiv, yy + yypiv, zz + zzpiv in
+
+  (xx + (zz - zz % 2) / 2), zz
+;;
+
+let turn_ccw (px, py) (x, y) =
+
+  (* pivot 2d to cube *)
+  let xxpiv = px - (py - py % 2) / 2 in
+  let zzpiv = py in
+  let yypiv = - xxpiv - zzpiv in
+
+  (* point 2d to cube *)
+  let xx = x - (y - y % 2) / 2 in
+  let zz = y in
+  let yy = - xx - zz in
+
+  (* adjust pivot *)
+  let xx, yy, zz = xx - xxpiv, yy - yypiv, zz - zzpiv in
+
+  (* rotate *)
+  let xx, yy, zz = -yy, -zz, -xx in
+
+  (* readjust pivot *)
+  let xx, yy, zz = xx + xxpiv, yy + yypiv, zz + zzpiv in
+
+  (xx + (zz - zz % 2) / 2), zz
+;;
+
+
+let moved_fig fig = function
+  | MOVE_E ->
+      printf "move_e\n%!";
+      { pivot = move_e fig.pivot
+      ; members = List.map fig.members ~f:move_e
+      }
+  | MOVE_W ->
+      printf "move_w\n%!";
+      { pivot = move_w fig.pivot
+      ; members = List.map fig.members ~f:move_w
+      }
+  | MOVE_SE ->
+      printf "move_se\n%!";
+      { pivot = move_se fig.pivot
+      ; members = List.map fig.members ~f:move_se
+      }
+  | MOVE_SW ->
+      printf "move_sw\n%!";
+      { pivot = move_sw fig.pivot
+      ; members = List.map fig.members ~f:move_sw
+      }
+  | TURN_CW ->
+      printf "turn_cw\n%!";
+      { pivot = fig.pivot
+      ; members = List.map fig.members ~f:(fun pt -> turn_cw fig.pivot pt)
+      }
+  | TURN_CCW ->
+      printf "turn_ccw\n%!";
+      { pivot = fig.pivot
+      ; members = List.map fig.members ~f:(fun pt -> turn_ccw fig.pivot pt)
+      }
+
+
+let apply_move state (move:move_t) =
+  match state.current_fig with
+  | None -> raise Impossible
+  | Some fig ->
+    let s = { state with current_fig = Some (moved_fig fig move) } in
+    validate_figure_state s
+;;
+
+
+let pick_best_move state =
+
+
+  let pool= ref []
+  and pool_final = ref [] in
+
+  let add_to_final_pool s =
+    pool_final := s :: !pool_final
+  in
+
+  let pool_move state last_move =
+    pool := (state, last_move) :: !pool
+  in
+
+  let rec consider_moves state moves =
+
+    let consider_move move =
+
+      try 
+        let next_state = apply_move state move in
+        pool_move next_state move
+      with
+        | Locked _ ->
+            printf "Locked\n%!";
+            print_state state;
+            add_to_final_pool state
+    in
+
+    List.iter moves ~f:consider_move
+  in
+
+  consider_moves state first_moves;
+
+  List.hd_exn !pool |> fst |> freeze_figure
+;;
 
 
 
 let make_figure json_fig =
-
   { members = take_json_cells json_fig "members"
   ; pivot = take_json_cell json_fig "pivot"
   }
+;;
 
 
 
@@ -202,4 +391,16 @@ let states_of_json json =
 
 
 let first_state_of_json something = states_of_json something |> List.hd_exn
+
+let rec put_figure_on_board_and_go st =
+  let n, next_seed = next_random st.seed in
+  let fig = List.nth_exn st.figures (n mod (List.length st.figures)) in
+  let st = { st with
+    seed = next_seed;
+  } in
+  try
+    initially_place_figure st fig |> pick_best_move |> put_figure_on_board_and_go
+  with Locked state -> state
+;;
+
 

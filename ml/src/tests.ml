@@ -66,6 +66,27 @@ let run_test_suite () =
   let first_10_rands = n_randoms 10 17 in
   assert ( first_10_rands = [0; 24107; 16552; 12125; 9427; 13152; 21440; 3383; 6873; 16117]);
 
+  let s_of_pt pt = sprintf "%d:%d" (fst pt) (snd pt) in
+
+  let test_rotation turn_func func_title pivot pts =
+    let rec vrfy = function 
+    | pt::exp::rest ->
+        if (turn_func pivot pt <> exp) 
+        then printf "Rotating %s %s around %s expected %s, got %s\n"
+          (s_of_pt pt) func_title (s_of_pt pivot) (s_of_pt exp) (turn_func pivot pt |> s_of_pt);
+        vrfy (exp :: rest)
+    | _ -> ()
+    in
+
+    vrfy pts
+  in
+
+  test_rotation turn_cw "CW" (2,6) [1,5; 2,5; 3,6; 2,7; 1,7; 1,6; 1,5];
+  test_rotation turn_cw "CW" (2,5) [2,4; 3,4; 3,5; 3,6; 2,6; 1,5; 2,4];
+  test_rotation turn_ccw "CCW" (2,6) [1,5; 1,6; 1,7; 2,7; 3,6; 2,5; 1,5];
+  test_rotation turn_ccw "CCW" (2,5) [2,4; 1,5; 2,6; 3,6; 3,5; 3,4; 2,4];
+
+
   printf "Tests passed.\n%!";
 
 ;;

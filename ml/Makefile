@@ -1,6 +1,22 @@
-all:
-	ocamlbuild -tag thread -use-ocamlfind -quiet -pkg core -pkg yojson src/main.native
-run: all
-	./main.native
+THREADS = ye
+FILES  = src/game.ml src/tests.ml src/main.ml
+PACKS = core yojson
 
-.PHONY:all run
+SOURCES = ${FILES}
+RESULT  = tetris
+
+
+#TARGET  = native-code
+TARGET  = debug-code
+
+all:$(TARGET)
+	$(POST)
+
+run:$(TARGET)
+	OCAMLRUNPARAM=b ./tetris
+
+all-clean: clean all
+
+.PHONY: all-clean all run win release publish
+
+-include OCamlMakefile
