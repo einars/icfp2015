@@ -1,6 +1,6 @@
 (defpackage :icfp/tetris
   (:nicknames :tetris)
-  (:use :cl :cl-json :icfp/state)
+  (:use :cl :cl-json :icfp/state :icfp/gui)
   (:export))
 
 (in-package :icfp/tetris)
@@ -88,7 +88,7 @@
 	     (piece (make-piece :pivot pivot :config config :start start)))
 	(setf (aref result i) piece)))))
 
-(defun solve-problem (number)
+(defun solve-problem (number &key with-gui)
   (let* ((data (read-problem number))
 	 (*board-width* (get-item :width data))
 	 (*board-height* (get-item :height data))
@@ -97,5 +97,7 @@
 	 (new-board (empty-board)))
     (parse-board data new-board)
     (format t "~A~%" *units*)
+    (when with-gui
+      (run-gui new-board))
     (dolist (*seed* (get-item :source-seeds data))
       (format-solution id *seed* (get-solution)))))
