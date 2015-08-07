@@ -5,6 +5,7 @@
 
 (in-package :icfp/tetris)
 
+(defvar *seed* 0)
 (defvar *width* nil)
 (defvar *height* nil)
 
@@ -37,6 +38,12 @@
 		(get-item :x locked)
 		(get-item :y locked))
 	  1)))
+
+(defun clamp (seed)
+  (logand (ash seed -16) #x7fff))
+
+(defun rnd ()
+  (clamp (setf *seed* (mod (+ (* *seed* 1103515245) 12345) (expt 2 32)))))
 
 (defun read-problem (number)
   (with-open-file (problem (format nil "problems/problem_~A.json" number))
