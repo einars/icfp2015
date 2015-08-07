@@ -12,16 +12,21 @@ let run_prog filename opt_tag print_solution () =
 
   if not print_solution then run_test_suite ();
 
-  let state = 
-    Yojson.Basic.from_file filename |> first_state_of_json |> put_figure_on_board_and_go
+  let states = 
+    List.map ~f:put_figure_on_board_and_go (Yojson.Basic.from_file filename |> states_of_json)
   in
-  if not print_solution then ignore(print_state state)
-  else  printf {json|[{"problemId": %d
+  if not print_solution then List.iter ~f:(fun e -> ignore(print_state e)) states
+  else (
+    String.concat ~sep:"," (List.map states ~f:(fun state ->
+    sprintf {json|{"problemId": %d
 ,"seed": %d
 ,"tag": "%s"
 ,"solution": "%s"
-}]
+}
 |json} state.id state.initial_seed (Option.value opt_tag ~default:"OCAML.DEV") (s_of_moves state.moves)
+    )) |> printf "[%s]";
+  )
+
 ;;
 
 

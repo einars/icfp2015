@@ -108,7 +108,7 @@ let print_state state =
 
   let s = freeze_figure state in
   
-  printf "%d×%d ID=%d, all_figs=%d, remaining=%d, seed=%d\n" s.width s.height s.id (List.length s.figures) s.remaining s.seed;
+  printf "%d×%d ID=%d, all_figs=%d, remaining=%d, seed=%d\n" s.width s.height s.id (List.length s.figures) s.remaining s.initial_seed;
   for row = 0 to s.height - 1 do
     if (row % 2 = 1) then printf " ";
     for col = 0 to s.width - 1 do
@@ -496,7 +496,6 @@ let rec put_figure_on_board_and_go st =
   if st.remaining = 0 then raise (Locked st);
   let n, next_seed = next_random st.seed in
   let n_fig = (n mod (List.length st.figures)) in
-  printf "Chose fig %d\n" n_fig;
   let fig = List.nth_exn st.figures n_fig in
 
   let st = { st with
