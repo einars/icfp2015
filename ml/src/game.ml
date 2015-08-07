@@ -27,6 +27,8 @@ let next_moves = function
   | TURN_CCW-> [          MOVE_W ; MOVE_SE ; MOVE_SW                       ]
   | LOCK_MARK -> []
 
+let s_of_pt pt = sprintf "[%d:%d]" (fst pt) (snd pt)
+
 (*
 
 a.(0) - rindiņas
@@ -345,8 +347,8 @@ let apply_move state (move:move_t) =
 
 
 let move_score = function
-  | MOVE_E -> 20
-  | MOVE_W -> 15
+  | MOVE_E -> 10
+  | MOVE_W -> 10
   | MOVE_SW | MOVE_SE -> 30
   | TURN_CW | TURN_CCW -> 1
   | LOCK_MARK -> 0
@@ -358,8 +360,15 @@ let state_has_full_lines state =
 ;;
 
 let state_heuristic state moves =
+
+  let figure_score = function
+  | None -> 0
+  | Some fig -> List.fold fig.members ~init:0 ~f:(fun accu (x,y) -> accu - y)
+  in
+
   List.fold moves ~init:0 ~f:(fun accum move -> accum + move_score move)
   + (if state_has_full_lines state then 500 else 0)
+  + figure_score state.current_fig
 ;;
 
 let take_some_states n (l:'a list) =
@@ -369,28 +378,48 @@ let take_some_states n (l:'a list) =
 ;;
 
 
+let state_hash state =
+  let h = ref [] in
+  for i = 0 to state.height - 1 do
+    for j = 0 to state.width - 1 do
+      h := (if state.field.(i).(j) then "X" else "-") :: !h
+    done;
+  done;
+  ( match state.current_fig with
+  | Some fig -> List.iter fig.members ~f:(fun m -> h := (s_of_pt m) :: !h)
+  | None -> ()
+  );
+  String.concat !h
+;;
+  
+
 
 
 let pick_best_move state =
 
 
+
+  let seen = ref (Set.empty ~comparator:String.comparator) in
   let pool = ref []
+  and final_pool = ref [] in
 
-  and some_final = ref None in
-
-  let add_to_final_pool s moves =
-    some_final := Some (s, moves)
+  let add_to_final_pool state moves =
+    final_pool := (state, moves) :: !final_pool;
   in
 
-  let pool_move state moves =
-    pool := (state, moves) :: !pool
+  let add_to_pool state moves =
+    let hash = state_hash state in
+    if not (Set.mem !seen hash) then (
+      seen := Set.add !seen hash;
+      pool := (state, moves) :: !pool;
+    )
   in
 
   let rec consider_moves state moves_so_far moves =
     let consider_move move =
       try 
         let next_state = apply_move state move in
-        pool_move next_state (move :: moves_so_far)
+        add_to_pool next_state (move :: moves_so_far)
       with
         | Locked _ ->
             add_to_final_pool state (LOCK_MARK :: move :: moves_so_far)
@@ -403,7 +432,10 @@ let pick_best_move state =
     pool := [];
     List.iter (take_some_states 100 old_pool) ~f:(fun (s, m) -> consider_moves s m (next_moves (List.hd_exn m)));
     if !pool <> [] then move_ya()
-    else !some_final
+    else match (take_some_states 1 !final_pool) with
+    | [] -> None
+    | foo :: _ -> Some foo
+
 
   in
 
