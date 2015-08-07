@@ -39,11 +39,9 @@
 		(get-item :y locked))
 	  1)))
 
-(defun clamp (seed)
-  (logand (ash seed -16) #x7fff))
-
 (defun rnd ()
-  (clamp (setf *seed* (mod (+ (* *seed* 1103515245) 12345) (expt 2 32)))))
+  (prog1 (logand (ash *seed* -16) #x7fff)
+    (setf *seed* (mod (+ (* *seed* 1103515245) 12345) (expt 2 32)))))
 
 (defun get-solution () ; this needs board & units as arguments
   "Ei!")
