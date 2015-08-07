@@ -7,6 +7,10 @@
 
 (defvar *seed* 0)
 (defvar *units* nil)
+(defvar *break* nil)
+
+(defun update-gui (board)
+  (funcall *break* board))
 
 (defvar *move-sequence*)
 
@@ -157,21 +161,23 @@
 (defun init-board-pieces (board number)
   (setf (board-pieces board) (list (aref *units* number))))
 
+(defun make-break-function (with-gui)
+  (if (not with-gui)
+      #'identity
+      (lambda (board)
+	(with-simple-restart (continue-processing "Continue?")
+	  (signal 'board-update :new-board board)))))
+
 (defun solve-problem (number &key with-gui)
   (let* ((data (read-problem number))
 	 (*board-width* (get-item :width data))
 	 (*board-height* (get-item :height data))
 	 (*total-moves* (get-item :source-length data))
+	 (*break* (make-break-function with-gui))
 	 (*units* (parse-units data))
 	 (id (get-item :id data))
 	 (new-board (empty-board)))
     (parse-board data new-board)
-    (when with-gui
-      (run-gui new-board (lambda ()
-			   (loop
-			      (format t "Hey Hey!~%")
-			      (with-simple-restart (continue-processing "Continue?")
-				   (signal 'board-update :new-board new-board))))))
     (dolist (*seed* (get-item :source-seeds data))
       (let ((*move-sequence* (generate-move-sequence)))
 	(init-board-pieces new-board (first *move-sequence*))
