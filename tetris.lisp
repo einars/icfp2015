@@ -38,13 +38,21 @@
     (4 ".")
     (6 "@")))
 
-(defun print-board (board)
+(defun print-raw-board (board)
   (dotimes (y *board-height*)
     (when (oddp y)
       (format t " "))
     (dotimes (x *board-width*)
       (format t "~A " (pretty-cell (aref (board-grid board) x y))))
     (format t "~%")))
+
+(defun print-board (vanilla-board)
+  (let* ((board (clone-board vanilla-board))
+	 (pivot (board-pivot vanilla-board)))
+    (dolist (i (board-active-cells vanilla-board))
+      (setf (aref (board-grid board) (pos-x i) (pos-y i)) 2))
+    (incf (aref (board-grid board) (pos-x pivot) (pos-y pivot)) 4)
+    (print-raw-board board)))
 
 (defun copy-grid (board)
   (let ((grid (empty-grid)))
@@ -63,7 +71,13 @@
     (setf *seed* (mod (+ (* *seed* 1103515245) 12345) (expt 2 32)))))
 
 (defun get-solution (board)
-  "Ei!")
+  (update-gui board)
+  (let* ((new-board (copy-board board))
+	 (last (copy-piece (last-move board)))
+	 (offset (piece-offset last)))
+    (setf (piece-offset last) (pos-add offset (make-pos :x 0 :y 1)))
+    (push last (board-pieces new-board))
+    (get-solution new-board)))
 
 (defun git-commit-cmd ()
   "git log -n1 --format=oneline --abbrev-commit --format=\"format:%h\"")
@@ -145,15 +159,6 @@
 	     (piece (make-piece :pivot pivot :config config :offset start)))
 	(setf (aref result i) piece)))))
 
-(defun print-unit (unit vanilla-board)
-  (let ((board (clone-board vanilla-board))
-	(pivot (pos-add (piece-pivot unit) (piece-offset unit))))
-    (dolist (i (aref (piece-config unit) (piece-turn unit)))
-      (let ((adjust (pos-add i (piece-offset unit))))
-	(setf (aref (board-grid board) (pos-x adjust) (pos-y adjust)) 2)))
-    (incf (aref (board-grid board) (pos-x pivot) (pos-y pivot)) 4)
-    (print-board board)))
-
 (defun generate-move-sequence (&optional (i *total-moves*))
   (when (> i 0)
     (cons (mod (rnd) (length *units*)) (generate-move-sequence (- i 1)))))
@@ -161,9 +166,15 @@
 (defun init-board-pieces (board number)
   (setf (board-pieces board) (list (aref *units* number))))
 
+(defun debug-board (board)
+  (print-board board)
+  (format t "~%")
+  (sleep 1))
+
 (defun make-break-function (with-gui)
   (if (not with-gui)
-      #'identity
+      ; #'identity
+      #'debug-board
       (lambda (board)
 	(with-simple-restart (continue-processing "Continue?")
 	  (signal 'board-update :new-board board)))))

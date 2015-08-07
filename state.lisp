@@ -1,9 +1,9 @@
 (defpackage :icfp/state
   (:nicknames :state)
   (:use :cl)
-  (:export :*board-width* :*board-height* :*total-moves*
+  (:export :*board-width* :*board-height* :*total-moves* :last-move
 	   :board :board-grid :board-pivot :board-active-cells :board-pieces
-	   :make-pos :pos-x :pos-y :pos-add :pos-sub
+	   :make-pos :pos-x :pos-y :pos-add :pos-sub :adjust-pos
 	   :make-piece :copy-piece :piece-pivot :piece-offset
 	   :piece-turn :piece-number :piece-config
 	   :empty-grid :empty-board :copy-board
@@ -33,11 +33,22 @@
 
 (defstruct board grid pieces)
 
+(defun last-move (board)
+  (first (board-pieces board)))
+
+(defun adjust-pos (pos offset)
+  (let ((result (pos-add pos offset)))
+    (when (and (oddp (pos-y offset)) (oddp (pos-y pos))) (incf (pos-x result)))
+    result))
+
 (defun board-pivot (board)
-  )
+  (let ((last (last-move board)))
+    (adjust-pos (piece-pivot last) (piece-offset last))))
 
 (defun board-active-cells (board)
-  )
+  (let ((last (last-move board)))
+    (mapcar (lambda (piece) (adjust-pos piece (piece-offset last)))
+	    (aref (piece-config last) (piece-turn last)))))
 
 (defun empty-grid ()
   (make-array (list *board-width* *board-height*)))
