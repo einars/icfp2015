@@ -11,6 +11,12 @@
 (defun get-item (item data)
   (cdr (assoc item data)))
 
+(defun create-pos (pos-data)
+  (make-pos :x (get-item :x pos-data) :y (get-item :y pos-data)))
+
+(defun get-pos (item data)
+  (create-pos (get-item item data)))
+
 (defun parse-board (data board)
   (dolist (locked (get-item :filled data))
     (setf (aref (board-grid board)
@@ -18,7 +24,7 @@
 		(get-item :y locked))
 	  1)))
 
-(defstruct piece pivot start cfg)
+(defstruct piece pivot start config)
 
 (defun pretty-cell (number)
   (case number
@@ -43,8 +49,11 @@
 (defun git-commit-cmd ()
   "git log -n1 --format=oneline --abbrev-commit --format=\"format:%h\"")
 
+(defun format-commit ()
+  (format nil "~A" (asdf::run-program (git-commit-cmd) :output :string)))
+
 (defun get-tag ()
-  #-windows-host(format nil "~A" (asdf::run-program (git-commit-cmd) :output :string))
+  #-windows-host(format-commit)
   #+windows-host"")
 
 (defun format-solution (id seed solution)
@@ -59,13 +68,25 @@
   (with-open-file (problem (format nil "problems/problem_~A.json" number))
     (json:decode-json problem)))
 
+(defun generate-rotations (config)
+  config)
+
+(defun generate-config (members)
+  (let ((config (make-array 6)))
+    (setf (aref config 0) (mapcar (lambda (x) (create-pos x)) members))
+    (generate-rotations config)
+    config))
+
 (defun parse-units (data)
   (let* ((units (get-item :units data))
 	 (result (make-array (length units))))
     (dotimes (i (length result) result)
       (let* ((element (elt units i))
-	     (pivot (get-item :pivot element)))
-	(setf (aref result i) (make-piece :pivot pivot))))))
+	     (pivot (get-pos :pivot element))
+	     (config (generate-config (get-item :members element)))
+	     (start nil)
+	     (piece (make-piece :pivot pivot :config config :start start)))
+	(setf (aref result i) piece)))))
 
 (defun solve-problem (number)
   (let* ((data (read-problem number))
@@ -75,5 +96,6 @@
 	 (id (get-item :id data))
 	 (new-board (empty-board)))
     (parse-board data new-board)
+    (format t "~A~%" *units*)
     (dolist (*seed* (get-item :source-seeds data))
       (format-solution id *seed* (get-solution)))))
