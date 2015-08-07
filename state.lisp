@@ -4,6 +4,8 @@
   (:export :*board-width* :*board-height*
 	   :board :board-grid :board-pivot :board-active-cells
 	   :make-pos :pos-x :pos-y :pos-add :pos-sub
+	   :make-piece :copy-piece :piece-pivot :piece-offset
+	   :piece-turn :piece-number :piece-config
 	   :empty-grid :empty-board :copy-board))
 
 (in-package :icfp/state)
@@ -20,6 +22,8 @@
 (defun pos-sub (a b)
   (make-pos :x (- (pos-x a) (pos-x b))
 	    :y (- (pos-y a) (pos-y b))))
+
+(defstruct piece pivot config number offset (turn 0))
 
 (defstruct board grid pivot active-cells)
 

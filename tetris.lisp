@@ -24,13 +24,13 @@
 		(get-item :y locked))
 	  1)))
 
-(defstruct piece pivot start config)
-
 (defun pretty-cell (number)
   (case number
     (0 "o")
     (1 "x")
-    (2 "*")))
+    (2 "*")
+    (4 ".")
+    (6 "@")))
 
 (defun print-board (board)
   (dotimes (y *board-height*)
@@ -114,6 +114,9 @@
     (generate-rotations pivot config)
     config))
 
+(defun horizontal-offset (left right)
+  (- (floor (- *board-width* (1+ (- right left))) 2) left))
+
 (defun calculate-start (config)
   (let ((right 0)
 	(left *board-width*)
@@ -122,7 +125,7 @@
       (setf top (min top (pos-y point)))
       (setf left (min left (pos-x point)))
       (setf right (max right (pos-x point))))
-    (make-pos :x (floor (- *board-width* (1+ (- right left))) 2) :y (- top))))
+    (make-pos :x (horizontal-offset left right) :y (- top))))
 
 (defun parse-units (data)
   (let* ((units (get-item :units data))
@@ -133,8 +136,17 @@
 	     (members (get-item :members element))
 	     (config (generate-config pivot members))
 	     (start (calculate-start config))
-	     (piece (make-piece :pivot pivot :config config :start start)))
+	     (piece (make-piece :pivot pivot :config config :offset start)))
 	(setf (aref result i) piece)))))
+
+(defun print-unit (unit vanilla-board)
+  (let ((board (clone-board vanilla-board))
+	(pivot (pos-add (piece-pivot unit) (piece-offset unit))))
+    (dolist (i (aref (piece-config unit) (piece-turn unit)))
+      (let ((adjust (pos-add i (piece-offset unit))))
+	(setf (aref (board-grid board) (pos-x adjust) (pos-y adjust)) 2)))
+    (incf (aref (board-grid board) (pos-x pivot) (pos-y pivot)) 4)
+    (print-board board)))
 
 (defun solve-problem (number &key with-gui)
   (let* ((data (read-problem number))
