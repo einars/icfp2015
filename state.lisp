@@ -2,7 +2,7 @@
   (:nicknames :state)
   (:use :cl)
   (:export :*board-width* :*board-height* :*total-moves*
-	   :board :board-grid :board-pivot :board-active-cells
+	   :board :board-grid :board-pivot :board-active-cells :board-pieces
 	   :make-pos :pos-x :pos-y :pos-add :pos-sub
 	   :make-piece :copy-piece :piece-pivot :piece-offset
 	   :piece-turn :piece-number :piece-config
@@ -29,9 +29,15 @@
   (make-pos :x (- (pos-x a) (pos-x b))
 	    :y (- (pos-y a) (pos-y b))))
 
-(defstruct piece pivot config number offset (turn 0))
+(defstruct piece pivot config offset (turn 0) (number 0))
 
-(defstruct board grid pivot active-cells)
+(defstruct board grid pieces)
+
+(defun board-pivot (board)
+  )
+
+(defun board-active-cells (board)
+  )
 
 (defun empty-grid ()
   (make-array (list *board-width* *board-height*)))

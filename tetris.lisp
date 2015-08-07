@@ -58,7 +58,7 @@
   (prog1 (logand (ash *seed* -16) #x7fff)
     (setf *seed* (mod (+ (* *seed* 1103515245) 12345) (expt 2 32)))))
 
-(defun get-solution () ; this needs board & units as arguments
+(defun get-solution (board)
   "Ei!")
 
 (defun git-commit-cmd ()
@@ -154,6 +154,9 @@
   (when (> i 0)
     (cons (mod (rnd) (length *units*)) (generate-move-sequence (- i 1)))))
 
+(defun init-board-pieces (board number)
+  (setf (board-pieces board) (list (aref *units* number))))
+
 (defun solve-problem (number &key with-gui)
   (let* ((data (read-problem number))
 	 (*board-width* (get-item :width data))
@@ -171,4 +174,5 @@
 				   (signal 'board-update :new-board new-board))))))
     (dolist (*seed* (get-item :source-seeds data))
       (let ((*move-sequence* (generate-move-sequence)))
-	(format-solution id *seed* (get-solution))))))
+	(init-board-pieces new-board (first *move-sequence*))
+	(format-solution id *seed* (get-solution new-board))))))
