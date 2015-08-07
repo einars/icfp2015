@@ -201,7 +201,10 @@
 						 :width 800
 						 :height 800))
 	   (top-bar (make-instance 'frame
-				      :width 800))
+				   :width 800))
+	   (debug-text (make-instance 'entry
+				      :master top-bar
+				      :width 50))
 	   (button-bar (make-instance 'frame
 				      :width 800))
 	   (btn-step (make-instance 'button 
@@ -263,6 +266,7 @@
       (pack btn-step :side :left)
       (pack btn-step10 :side :left)
       (pack btn-step50 :side :left)
+      (pack debug-text :side :left)
       (pack board-scrolled-canvas :expand 1 :fill :both)
       (scrollregion *canvas* 0 0 3000 3000)
       (pack button-bar :side :top)
@@ -276,6 +280,7 @@
       (ignore-errors
 	(handler-bind ((board-update (lambda (c)
 				       (redraw-board (board-update-board c))
+				       (setf (text debug-text) (board-update-msg c))
 				       (if (zerop *auto-play-moves*)
 					   (mainloop)
 					   (progn

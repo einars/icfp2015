@@ -7,7 +7,7 @@
 	   :make-piece :copy-piece :piece-pivot :piece-offset
 	   :piece-turn :piece-number :piece-config
 	   :empty-grid :empty-board :copy-board
-	   :board-update :board-update-board :continue-processing))
+	   :board-update :board-update-board :board-update-msg :continue-processing))
 
 (in-package :icfp/state)
 
@@ -17,7 +17,10 @@
 
 (define-condition board-update ()
   ((new-board :initarg :new-board
-	      :reader board-update-board)))
+	      :reader board-update-board)
+   (debug-msg :initarg :debug-msg
+	      :reader board-update-msg
+	      :initform "")))
 
 (defstruct pos x y)
 
