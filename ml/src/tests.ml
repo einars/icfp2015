@@ -49,6 +49,23 @@ let run_test_suite () =
   assert ( initial_figure_offset fd_4x4 fig_XXX = (0,0) );
   assert ( initial_figure_offset fd_5x5 fig_XXX = (1,0) );
 
+  let n_randoms n initial_seed =
+    let out = ref []
+    and seed = ref initial_seed in
+
+    for i = 0 to n - 1  do
+      let n, next_seed = next_random !seed in
+      out := n :: !out;
+      seed := next_seed;
+    done;
+    List.rev !out
+  in
+
+
+
+  let first_10_rands = n_randoms 10 17 in
+  assert ( first_10_rands = [0; 24107; 16552; 12125; 9427; 13152; 21440; 3383; 6873; 16117]);
+
   printf "Tests passed.\n%!";
 
 ;;

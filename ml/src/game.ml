@@ -15,6 +15,7 @@ type figure_t =
 
 
 
+
 (*
 
 a.(0) - rindiņas
@@ -32,8 +33,11 @@ type state_t =
   ; seed: int
   ; remaining: int (* inv sourceLength *)
   ; current_fig: figure_t option
+  ; current_fig_offs: int*int
+  ; 
 }
 
+exception Locked of state_t
 
 let json_cell json =
   let open Yojson.Basic.Util in
@@ -55,6 +59,11 @@ let take_json_cells json field =
 
 let make_field width height =
   Array.make_matrix height width false
+;;
+
+
+let next_random seed =
+  seed lsr 16 land 0x7fff, (seed * 0x41c64e6d + 12345) land 0xffffffff
 ;;
 
 
@@ -104,6 +113,57 @@ let initial_figure_offset state fig =
 ;;
 
 
+
+let check_fig_placement state fig xoffs yoffs =
+  
+  let check_fig_point (x,y) =
+
+    let sy = y + yoffs
+    and sx = x + xoffs in
+
+    (* out of bounds *)
+    if sy < 0 then raise (Locked state);
+    if sx < 0 then raise (Locked state);
+    if sx >= state.width then raise (Locked state);
+    if sy >= state.height then raise (Locked state);
+    if state.field.(sy).(sx) then raise (Locked state);
+  in
+
+  List.iter fig.members ~f:check_fig_point
+;;
+
+let clone_field field =
+  Array.init (Array.length field) (fun i -> Array.copy field.(i))
+
+let freeze_figure state =
+
+  let new_field = clone_field state.field in
+  let ox, oy = state.current_fig_offs in
+  (match state.current_fig with
+    | Some fig -> 
+        List.iter fig.members ~f:(fun (x, y) -> new_field.(y + oy).(x + ox) <- true);
+    | None -> ()
+  );
+
+  { state with
+    current_fig = None;
+    field = new_field
+  }
+
+
+
+
+let initially_place_figure state fig  =
+  let xoffs, yoffs = initial_figure_offset state fig in
+  check_fig_placement state fig xoffs yoffs;
+  { state with
+    current_fig = Some fig;
+    current_fig_offs = xoffs, yoffs
+  }
+
+
+
+
 let make_figure json_fig =
 
   { members = take_json_cells json_fig "members"
@@ -132,6 +192,7 @@ let states_of_json json =
     remaining = source_length;
     current_fig = None;
     seed = 0;
+    current_fig_offs = 0,0;
   } in
 
   List.map source_seeds ~f:(fun (seed) ->
