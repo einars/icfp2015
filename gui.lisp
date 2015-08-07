@@ -240,7 +240,6 @@
       (setf *canvas* (canvas board-scrolled-canvas))
       (create-board-background *board-width* *board-height*)
       (redraw-board init-board)
-      (replace-figure '(5 . 0) '(2 . 1)  '(5 . 0))
       (pack btn-step :side :top)
       (pack board-scrolled-canvas :expand 1 :fill :both)
       (scrollregion *canvas* 0 0 3000 3000)
