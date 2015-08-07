@@ -21,6 +21,7 @@
 
 ;;; Internal special vars
 (defvar *last-figure*)
+(defvar *curr-points*)
 (defvar *canvas*)
 (defvar *filled-cells*)
 
@@ -39,11 +40,11 @@
     honeycomb))
 
 (defun x-to-pixels (x y)
-  (+ *grid-x-step* (* 2 x *grid-x-step*) (if (oddp y) *grid-x-step* 0)))
+  (+ (* 3 *grid-x-step*) (* 2 x *grid-x-step*) (if (oddp y) *grid-x-step* 0)))
 
 (defun y-to-pixels (x y)
   (declare (ignore x))
-  (+ *grid-x-step* (* 2 y *grid-y-step*)))
+  (+ (* 3 *grid-x-step*) (* 2 y *grid-y-step*)))
 
 (defun create-board-background (x y)
   (dotimes (i x)
@@ -74,9 +75,35 @@
   (format t "~A" *last-figure*)
   (dolist (item *last-figure*)
     (itemdelete *canvas* item))
-  (setf *last-figure*
-	(cons (place-pivot pivot)
-	      (mapcar #'place-honeycobm points))))
+  (setf *last-figure* (cons (place-pivot pivot)
+			    (mapcar #'place-honeycobm points))
+	*curr-points* (cons pivot (copy-tree points))))
+
+(defun move-e ()
+  (apply #'replace-figure
+	 (mapcar (lambda (point)
+		   (cons (1- (car point)) (cdr point)))
+		 *curr-points*)))
+(defun move-w ()
+  (apply #'replace-figure
+	 (mapcar (lambda (point)
+		   (cons (1+ (car point)) (cdr point)))
+		 *curr-points*)))
+(defun move-se ()
+  (apply #'replace-figure
+	 (mapcar (lambda (point)
+		   (destructuring-bind (x . y) point
+		     (cons (if (evenp y) (1- x) x)
+			   (1+ y))))
+		 *curr-points*)))
+(defun move-sw ()
+  (apply #'replace-figure
+	 (mapcar (lambda (point)
+		   (destructuring-bind (x . y) point
+		     (cons (if (oddp y) (1+ x) x)
+			   (1+ y))))
+		 *curr-points*)))
+
 
 (defun redraw-board (new-board)
   (dotimes (x *board-width*)
@@ -89,7 +116,9 @@
 	  (setf (aref *filled-cells* x y) nil))
 	(when (and (not (zerop elem-set))
 		   (not board-item))
-	  (setf (aref *filled-cells* x y) (place-honeycobm (cons x y) :active nil)))))))
+	  (setf (aref *filled-cells* x y) (place-honeycobm (cons x y) :active nil))))))
+  (when-let ((pivot (board-pivot new-board)))
+    (replace-figure pivot (board-active-cells new-board))))
 
 (defun run-gui (init-board)
   (let ((*last-figure* nil)
@@ -97,18 +126,38 @@
 	(*filled-cells* (make-array (list *board-width* *board-height*) :initial-element nil)))
     (with-ltk ()
       (let* ((board-scrolled-canvas (make-instance 'scrolled-canvas
-						   ))	     	   	   
+						   :width 800
+						   :height 800))
 	     (button-bar (make-instance 'frame
-					:width 300))
-	     (click (make-instance 'button 
+					:width 800))
+	     (btn-e (make-instance 'button 
 				   :master button-bar
-				   :text "Press Me"
+				   :text "   E   "
 				   :command (lambda ()
-					      (replace-figure (cons 2 2) (cons 3 4) (cons 3 5))))))
+					      (move-e))))
+	     (btn-w (make-instance 'button 
+				   :master button-bar
+				   :text "   W   "
+				   :command (lambda ()
+					      (move-w))))
+	     (btn-se (make-instance 'button 
+				   :master button-bar
+				   :text "  SE   "
+				   :command (lambda ()
+					      (move-se))))
+	     (btn-sw (make-instance 'button 
+				   :master button-bar
+				   :text "  SW   "
+				   :command (lambda ()
+					      (move-sw)))))
 	(setf *canvas* (canvas board-scrolled-canvas))
 	(create-board-background *board-width* *board-height*)
 	(redraw-board init-board)
+	(replace-figure '(5 . 0) '(2 . 0) '(3 . 0) '(7 . 0) '(8 . 0))
 	(pack board-scrolled-canvas :expand 1 :fill :both)
 	(scrollregion *canvas* 0 0 3000 3000)
 	(pack button-bar :side :top)
-	(pack click :side :left)))))
+	(pack btn-e :side :left)
+	(pack btn-w :side :left)
+	(pack btn-se :side :left)
+	(pack btn-sw :side :left)))))
