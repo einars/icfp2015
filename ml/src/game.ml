@@ -507,4 +507,9 @@ let rec put_figure_on_board_and_go st =
   with Locked state -> state
 ;;
 
+let solve state =
+  eprintf "Solving seed %08x\n" state.initial_seed;
+  put_figure_on_board_and_go state
+;;
+
 

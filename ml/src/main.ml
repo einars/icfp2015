@@ -13,7 +13,7 @@ let run_prog filename opt_tag print_solution () =
   if not print_solution then run_test_suite ();
 
   let states = 
-    List.map ~f:put_figure_on_board_and_go (Yojson.Basic.from_file filename |> states_of_json)
+    List.map ~f:solve (Yojson.Basic.from_file filename |> states_of_json)
   in
   if not print_solution then List.iter ~f:(fun e -> ignore(print_state e)) states
   else (
