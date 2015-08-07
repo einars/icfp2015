@@ -27,14 +27,6 @@ let next_moves = function
   | TURN_CCW-> [          MOVE_W ; MOVE_SE ; MOVE_SW                       ]
   | LOCK_MARK -> []
 
-let first_moves = 
-  [ MOVE_SE ; MOVE_SW ]
-
-let next_moves = function
-  | MOVE_SE -> [  MOVE_SE ; MOVE_SW ; ]
-  | MOVE_SW -> [  MOVE_SE ; MOVE_SW ; ]
-  | MOVE_E  -> [  MOVE_SE ; MOVE_SW ; MOVE_E ]
-  | _ -> []
 (*
 
 a.(0) - rindiņas
@@ -60,6 +52,17 @@ type state_t =
 exception Locked of state_t
 exception Impossible
 
+let mut_drop_full_lines state =
+  for i = state.height - 1 downto 0 do
+    if not (Array.exists state.field.(i) ~f:(fun e -> not e)) then begin
+      for j = i downto 1 do
+        state.field.(j) <- state.field.(j - 1);
+      done;
+      state.field.(0) <- Array.init state.width (fun n -> false)
+    end;
+  done;
+  state
+;;
 
 let freeze_figure state =
 
@@ -92,7 +95,7 @@ let s_of_moves moves =
     | TURN_CW -> "q"
     | TURN_CCW -> "k"
     (* | LOCK_MARK -> "\\t" *)
-    | LOCK_MARK -> "\\t"
+    | LOCK_MARK -> ""
   ) in
   String.concat mcs
 ;;
@@ -339,16 +342,30 @@ let apply_move state (move:move_t) =
 ;;
 
 
-let take_some n (l:'a list) =
 
-  let n_elems = List.length l in
 
-  let rec choose_elems n accu =
-    if n = 0 then accu
-    else let elem = Random.int n_elems in
-      choose_elems (n - 1) ((List.nth_exn l elem) :: accu)
-  in
-  if n_elems <= n then l else choose_elems n []
+let move_score = function
+  | MOVE_E -> 20
+  | MOVE_W -> 15
+  | MOVE_SW | MOVE_SE -> 30
+  | TURN_CW | TURN_CCW -> 1
+  | LOCK_MARK -> 0
+;;
+
+let state_has_full_lines state =
+  let is_full_line row = not (Array.exists row ~f:(fun e -> not e)) in
+  Array.exists state.field ~f:is_full_line
+;;
+
+let state_heuristic state moves =
+  List.fold moves ~init:0 ~f:(fun accum move -> accum + move_score move)
+  + (if state_has_full_lines state then 500 else 0)
+;;
+
+let take_some_states n (l:'a list) =
+
+  let sl = List.sort ~cmp:(fun (a, m) (b, mb) -> (state_heuristic a m) - (state_heuristic b m)) l in
+  List.take sl n
 ;;
 
 
@@ -384,7 +401,7 @@ let pick_best_move state =
   let rec move_ya () =
     let old_pool = !pool in
     pool := [];
-    List.iter (take_some 3 old_pool) ~f:(fun (s, m) -> consider_moves s m (next_moves (List.hd_exn m)));
+    List.iter (take_some_states 100 old_pool) ~f:(fun (s, m) -> consider_moves s m (next_moves (List.hd_exn m)));
     if !pool <> [] then move_ya()
     else !some_final
 
@@ -393,7 +410,7 @@ let pick_best_move state =
   consider_moves state [] first_moves;
   match move_ya () with
   | Some (st, fig_moves) -> let s = st |> freeze_figure in
-  { s with moves = List.append s.moves (List.rev fig_moves) }
+  mut_drop_full_lines { s with moves = List.append s.moves (List.rev fig_moves) }
   | None -> raise Impossible
 ;;
 
@@ -404,7 +421,6 @@ let make_figure json_fig =
   ; pivot = take_json_cell json_fig "pivot"
   }
 ;;
-
 
 
   (* atdod masīvu ar steitiem, atbilstošu source_seediem *)
@@ -447,8 +463,11 @@ let first_state_of_json something = states_of_json something |> List.hd_exn
 let rec put_figure_on_board_and_go st =
   let n, next_seed = next_random st.seed in
   let fig = List.nth_exn st.figures (n mod (List.length st.figures)) in
+  if st.remaining = 0 then raise (Locked st);
+
   let st = { st with
     seed = next_seed;
+    remaining = st.remaining - 1
   } in
   try
     initially_place_figure st fig |> pick_best_move |> put_figure_on_board_and_go
