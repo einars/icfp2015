@@ -86,6 +86,14 @@ let run_test_suite () =
   test_rotation turn_ccw "CCW" (2,6) [1,5; 1,6; 1,7; 2,7; 3,6; 2,5; 1,5];
   test_rotation turn_ccw "CCW" (2,5) [2,4; 1,5; 2,6; 3,6; 3,5; 3,4; 2,4];
 
+  assert ((move_sw (2,5)) = (2,6));
+  assert ((move_sw (2,6)) = (1,7));
+  assert ((move_sw (3,5)) = (3,6));
+  assert ((move_sw (3,6)) = (2,7));
+  assert ((move_se (2,5)) = (3,6));
+  assert ((move_se (3,6)) = (3,7));
+  assert ((move_se (2,6)) = (2,7));
+  assert ((move_se (2,7)) = (3,8));
 
   printf "Tests passed.\n%!";
 

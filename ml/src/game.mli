@@ -31,12 +31,14 @@ val initial_figure_offset: state_t -> figure_t -> int * int
 val next_random: int -> int * int
 
 val put_figure_on_board_and_go: state_t -> state_t
-val print_state: state_t -> unit
+val print_state: state_t -> state_t
 
 val first_state_of_json: Basic.json -> state_t
 val states_of_json: Basic.json -> state_t list
 
 val turn_cw: int*int -> int*int -> int*int
 val turn_ccw: int*int -> int*int -> int*int
+val move_sw: int*int -> int*int
+val move_se: int*int -> int*int
 
 val s_of_moves: move_t list -> string
