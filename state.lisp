@@ -36,10 +36,13 @@
 (defun last-move (board)
   (first (board-pieces board)))
 
+(defun convert-pos (pos)
+  (cons (pos-x pos) (pos-y pos)))
+
 (defun adjust-pos (pos offset)
   (let ((result (pos-add pos offset)))
     (when (and (oddp (pos-y offset)) (oddp (pos-y pos))) (incf (pos-x result)))
-    result))
+    (convert-pos result)))
 
 (defun board-pivot (board)
   (let ((last (last-move board)))

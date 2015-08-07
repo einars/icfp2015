@@ -50,8 +50,8 @@
   (let* ((board (clone-board vanilla-board))
 	 (pivot (board-pivot vanilla-board)))
     (dolist (i (board-active-cells vanilla-board))
-      (setf (aref (board-grid board) (pos-x i) (pos-y i)) 2))
-    (incf (aref (board-grid board) (pos-x pivot) (pos-y pivot)) 4)
+      (setf (aref (board-grid board) (car i) (cdr i)) 2))
+    (incf (aref (board-grid board) (car pivot) (cdr pivot)) 4)
     (print-raw-board board)))
 
 (defun copy-grid (board)
