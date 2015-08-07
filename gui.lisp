@@ -183,7 +183,7 @@
 		   (not board-item))
 	  (setf (aref *filled-cells* x y) (place-honeycobm (cons x y) *placed-honeycomb-color*))))))
   (when-let ((pivot (board-pivot new-board)))
-    (replace-figure pivot (board-active-cells new-board)))
+    (apply #'replace-figure pivot (board-active-cells new-board)))
   (setf *move-history* nil))
 
 (defun run-gui (init-board update-fn)
