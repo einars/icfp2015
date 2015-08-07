@@ -508,7 +508,7 @@ let rec put_figure_on_board_and_go st =
 ;;
 
 let solve state =
-  eprintf "Solving seed %08x\n" state.initial_seed;
+  eprintf "Solving seed %08x\n%!" state.initial_seed;
   put_figure_on_board_and_go state
 ;;
 

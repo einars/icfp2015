@@ -1,0 +1,34 @@
+./tetris  -f ../problems/problem_7.json --tag $(git rev-parse --short HEAD) -s >p7.json
+./push-solution p7.json
+./tetris  -f ../problems/problem_8.json --tag $(git rev-parse --short HEAD) -s >p8.json
+./push-solution p8.json
+./tetris  -f ../problems/problem_9.json --tag $(git rev-parse --short HEAD) -s >p9.json
+./push-solution p9.json
+./tetris  -f ../problems/problem_10.json --tag $(git rev-parse --short HEAD) -s >p10.json
+./push-solution p10.json
+./tetris  -f ../problems/problem_11.json --tag $(git rev-parse --short HEAD) -s >p11.json
+./push-solution p11.json
+./tetris  -f ../problems/problem_12.json --tag $(git rev-parse --short HEAD) -s >p12.json
+./push-solution p12.json
+./tetris  -f ../problems/problem_13.json --tag $(git rev-parse --short HEAD) -s >p13.json
+./push-solution p13.json
+./tetris  -f ../problems/problem_14.json --tag $(git rev-parse --short HEAD) -s >p14.json
+./push-solution p14.json
+./tetris  -f ../problems/problem_15.json --tag $(git rev-parse --short HEAD) -s >p15.json
+./push-solution p15.json
+./tetris  -f ../problems/problem_16.json --tag $(git rev-parse --short HEAD) -s >p16.json
+./push-solution p16.json
+./tetris  -f ../problems/problem_17.json --tag $(git rev-parse --short HEAD) -s >p17.json
+./push-solution p17.json
+./tetris  -f ../problems/problem_18.json --tag $(git rev-parse --short HEAD) -s >p18.json
+./push-solution p18.json
+./tetris  -f ../problems/problem_19.json --tag $(git rev-parse --short HEAD) -s >p19.json
+./push-solution p19.json
+./tetris  -f ../problems/problem_20.json --tag $(git rev-parse --short HEAD) -s >p20.json
+./push-solution p20.json
+./tetris  -f ../problems/problem_21.json --tag $(git rev-parse --short HEAD) -s >p21.json
+./push-solution p21.json
+./tetris  -f ../problems/problem_22.json --tag $(git rev-parse --short HEAD) -s >p22.json
+./push-solution p22.json
+./tetris  -f ../problems/problem_23.json --tag $(git rev-parse --short HEAD) -s >p23.json
+./push-solution p23.json
