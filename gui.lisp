@@ -6,17 +6,18 @@
 (in-package :icfp/gui)
 
 ;;; Geometry
-(defparameter *bg-honeycomb-r* 30)
-(defparameter *grid-x-step* 30)
+(defparameter *bg-honeycomb-r* 24)
+(defparameter *grid-x-step* 24)
 (defparameter *grid-y-step* (round (* 0.866 *grid-x-step*)))
 
-(defparameter *placed-honeycomb-r* 26)
-(defparameter *pivot-r* 12)
+(defparameter *placed-honeycomb-r* 22)
+(defparameter *pivot-r* 10)
 
 ;;; Colors
 (defparameter *bg-honeycomb-color* "gray70")
 (defparameter *placed-honeycomb-color* "moccasin")
 (defparameter *active-honeycomb-color* "gold")
+(defparameter *overlap-honeycomb-color* "firebrick")
 (defparameter *pivot-color* "gray30")
 
 ;;; Internal special vars
@@ -24,6 +25,7 @@
 (defvar *curr-points*)
 (defvar *canvas*)
 (defvar *filled-cells*)
+(defvar *move-history*)
 
 (defun create-honeycomb (x y r &key (color "gray70"))
   (let* ((height (* 2 r))
@@ -51,14 +53,14 @@
     (dotimes (j y)
       (create-honeycomb (x-to-pixels i j) (y-to-pixels i j) *bg-honeycomb-r* :color *bg-honeycomb-color*))))
 
-(defun place-honeycobm (coords &key (active t))
+(defun place-honeycobm (coords color)
   (let ((x (car coords))
 	(y (cdr coords)))
     (create-honeycomb
      (x-to-pixels x y)
      (y-to-pixels x y)
      *placed-honeycomb-r*
-     :color (if active *active-honeycomb-color* *placed-honeycomb-color*))))
+     :color color)))
 
 (defun place-pivot (coords)
   (let* ((x (car coords))
@@ -71,25 +73,37 @@
     (itemconfigure *canvas* oval "fill" *pivot-color*)
     oval))
 
+(defun place-active-cell (point)
+  (place-honeycobm point (destructuring-bind (x . y) point
+			   (if (or (> 0 x)
+				   (> 0 y)
+				   (>= x *board-width*)
+				   (>= y *board-height*)
+				   (aref *filled-cells* (car point) (cdr point)))
+			       *overlap-honeycomb-color*
+			       *active-honeycomb-color*))))
+
 (defun replace-figure (pivot &rest points)
-  (format t "~A" *last-figure*)
   (dolist (item *last-figure*)
     (itemdelete *canvas* item))
-  (setf *last-figure* (cons (place-pivot pivot)
-			    (mapcar #'place-honeycobm points))
-	*curr-points* (cons pivot (copy-tree points))))
+  (let ((figure (mapcar #'place-active-cell points)))
+    (setf *last-figure* (cons (place-pivot pivot) figure)
+	  *curr-points* (cons pivot (copy-tree points)))))
 
 (defun move-e ()
+  (push (copy-tree *curr-points*) *move-history*)
   (apply #'replace-figure
 	 (mapcar (lambda (point)
 		   (cons (1- (car point)) (cdr point)))
 		 *curr-points*)))
 (defun move-w ()
+  (push (copy-tree *curr-points*) *move-history*)
   (apply #'replace-figure
 	 (mapcar (lambda (point)
 		   (cons (1+ (car point)) (cdr point)))
 		 *curr-points*)))
 (defun move-se ()
+  (push (copy-tree *curr-points*) *move-history*)
   (apply #'replace-figure
 	 (mapcar (lambda (point)
 		   (destructuring-bind (x . y) point
@@ -97,6 +111,7 @@
 			   (1+ y))))
 		 *curr-points*)))
 (defun move-sw ()
+  (push (copy-tree *curr-points*) *move-history*)
   (apply #'replace-figure
 	 (mapcar (lambda (point)
 		   (destructuring-bind (x . y) point
@@ -104,6 +119,56 @@
 			   (1+ y))))
 		 *curr-points*)))
 
+(defun pos-2-cube (point)
+  (let* ((x (car point))
+	 (y (cdr point))
+	 (xx (- x (/ (- y (logand y 1)) 2))))
+    (list xx (- (- xx) y) y)))
+
+(defun cube-2-pos (cube)
+  (let ((xx (first cube))
+	(zz (third cube)))
+    (cons (+ xx (/ (- zz (logand zz 1)) 2)) zz)))
+
+(defun rotate-cube (cube)
+  (list (- (third cube)) (- (first cube)) (- (second cube))))
+
+(defun rotate-point (pivot point)
+  (let* ((cube-pivot (pos-2-cube pivot))
+	 (normalized (mapcar #'- (pos-2-cube point) cube-pivot))
+	 (rotated-cube (mapcar #'+ cube-pivot (rotate-cube normalized))))
+    (cube-2-pos rotated-cube)))
+
+(defun rotate-cw ()
+  (push (copy-tree *curr-points*) *move-history*)
+  (let ((pivot (car *curr-points*)))
+    (apply #'replace-figure
+	   pivot
+	   (mapcar (lambda (point)
+		     (rotate-point pivot point))
+		   (cdr *curr-points*)))))
+
+(defun rotate-ccw ()
+  (push (copy-tree *curr-points*) *move-history*)
+  (let ((pivot (car *curr-points*)))
+    (apply #'replace-figure
+	   pivot
+	   (mapcar (lambda (point)
+		     (rotate-point
+		      pivot
+		      (rotate-point
+		       pivot
+		       (rotate-point
+			pivot
+			(rotate-point
+			 pivot
+			 (rotate-point pivot point))))))
+		   (cdr *curr-points*)))))
+
+(defun undo-move ()
+  (when *move-history*
+    (let ((prev-point (pop *move-history*)))
+      (apply #'replace-figure prev-point))))
 
 (defun redraw-board (new-board)
   (dotimes (x *board-width*)
@@ -116,20 +181,27 @@
 	  (setf (aref *filled-cells* x y) nil))
 	(when (and (not (zerop elem-set))
 		   (not board-item))
-	  (setf (aref *filled-cells* x y) (place-honeycobm (cons x y) :active nil))))))
+	  (setf (aref *filled-cells* x y) (place-honeycobm (cons x y) *placed-honeycomb-color*))))))
   (when-let ((pivot (board-pivot new-board)))
-    (replace-figure pivot (board-active-cells new-board))))
+    (replace-figure pivot (board-active-cells new-board)))
+  (setf *move-history* nil))
 
 (defun run-gui (init-board)
   (let ((*last-figure* nil)
 	(*canvas* nil)
-	(*filled-cells* (make-array (list *board-width* *board-height*) :initial-element nil)))
+	(*filled-cells* (make-array (list *board-width* *board-height*) :initial-element nil))
+	(*move-history* nil))
     (with-ltk ()
       (let* ((board-scrolled-canvas (make-instance 'scrolled-canvas
 						   :width 800
 						   :height 800))
 	     (button-bar (make-instance 'frame
 					:width 800))
+	     (btn-undo (make-instance 'button 
+				   :master button-bar
+				   :text " Undo! "
+				   :command (lambda ()
+					      (undo-move))))
 	     (btn-e (make-instance 'button 
 				   :master button-bar
 				   :text "   E   "
@@ -149,15 +221,28 @@
 				   :master button-bar
 				   :text "  SW   "
 				   :command (lambda ()
-					      (move-sw)))))
+					      (move-sw))))
+	     (btn-cw (make-instance 'button 
+				   :master button-bar
+				   :text "  CW   "
+				   :command (lambda ()
+					      (rotate-cw))))
+	     (btn-ccw (make-instance 'button 
+				   :master button-bar
+				   :text "  CCW  "
+				   :command (lambda ()
+					      (rotate-ccw)))))
 	(setf *canvas* (canvas board-scrolled-canvas))
 	(create-board-background *board-width* *board-height*)
 	(redraw-board init-board)
-	(replace-figure '(5 . 0) '(2 . 0) '(3 . 0) '(7 . 0) '(8 . 0))
+	(replace-figure '(5 . 0) '(2 . 1)  '(5 . 0))
 	(pack board-scrolled-canvas :expand 1 :fill :both)
 	(scrollregion *canvas* 0 0 3000 3000)
 	(pack button-bar :side :top)
+	(pack btn-undo :side :left)
 	(pack btn-e :side :left)
 	(pack btn-w :side :left)
 	(pack btn-se :side :left)
-	(pack btn-sw :side :left)))))
+	(pack btn-sw :side :left)
+	(pack btn-cw :side :left)
+	(pack btn-ccw :side :left)))))
