@@ -81,9 +81,40 @@
 (defun adjust-piece-turn (piece turn)
   (setf (piece-turn piece) (mod (+ (piece-turn piece) turn) 6)))
 
+(defun good-cell (board cell)
+  (and (<= 0 (car cell) (1- *board-width*))
+       (<= 0 (cdr cell) (1- *board-height*))
+       (= 0 (aref (board-grid board) (car cell) (cdr cell)))))
+
+(defun is-outside (board cells)
+  (cond ((null cells) nil)
+	((not (good-cell board (first cells))) t)
+	(t (is-outside board (rest cells)))))
+
+(defun is-locking (board)
+  (is-outside board (board-active-cells board)))
+
+(defun get-new-piece (board)
+  (let* ((number (1+ (piece-number (last-move board))))
+	 (next (copy-piece (aref *units* (aref *move-sequence* number)))))
+    (setf (piece-number next) number)
+    next))
+
+(defun lock-piece (board)
+  (setf (board-grid board) (copy-grid board))
+  (dolist (i (board-active-cells board))
+    (setf (aref (board-grid board) (car i) (cdr i)) 1)))
+
+(defun lock-down (board)
+  (pop (board-pieces board))
+  (lock-piece board)
+  (push (get-new-piece board) (board-pieces board))
+  board)
+
 (defun make-move (board move)
   (let* ((new-board (copy-board board))
 	 (next (copy-piece (last-move board))))
+    (setf (piece-offset next) (copy-pos (piece-offset next)))
     (push next (board-pieces new-board))
     (case move
       (W  (adjust-piece-offset next -1 0 #'null))
@@ -92,11 +123,14 @@
       (SE (adjust-piece-offset next  1 1 #'evenp))
       (R+ (adjust-piece-turn next  1))
       (R- (adjust-piece-turn next -1)))
-    new-board))
+    (if (is-locking new-board)
+	(lock-down new-board)
+	new-board)))
 
 (defun get-solution (board)
   (update-gui board)
-  (get-solution (make-move board (random-elt '(W E SW SE R+ R-)))))
+  (get-solution (make-move board (random-elt '(SE SW)))))
+;  (get-solution (make-move board (random-elt '(W E SW SE R+ R-)))))
 
 (defun git-commit-cmd ()
   "git log -n1 --format=oneline --abbrev-commit --format=\"format:%h\"")
@@ -178,9 +212,10 @@
 	     (piece (make-piece :pivot pivot :config config :offset start)))
 	(setf (aref result i) piece)))))
 
-(defun generate-move-sequence (&optional (i *total-moves*))
-  (when (> i 0)
-    (cons (mod (rnd) (length *units*)) (generate-move-sequence (- i 1)))))
+(defun generate-move-sequence ()
+  (let ((sequence (make-array *total-moves*)))
+    (dotimes (i *total-moves* sequence)
+      (setf (aref sequence i) (mod (rnd) (length *units*))))))
 
 (defun init-board-pieces (board number)
   (setf (board-pieces board) (list (aref *units* number))))
@@ -215,5 +250,5 @@
     (parse-board data new-board)
     (dolist (*seed* (get-item :source-seeds data))
       (let ((*move-sequence* (generate-move-sequence)))
-	(init-board-pieces new-board (first *move-sequence*))
+	(init-board-pieces new-board (aref *move-sequence* 0))
 	(format-solution id *seed* (solution-with-gui new-board with-gui))))))

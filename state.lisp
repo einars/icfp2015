@@ -3,7 +3,7 @@
   (:use :cl)
   (:export :*board-width* :*board-height* :*total-moves* :last-move
 	   :board :board-grid :board-pivot :board-active-cells :board-pieces
-	   :make-pos :pos-x :pos-y :pos-add :pos-sub :adjust-pos
+	   :make-pos :pos-x :pos-y :pos-add :pos-sub :adjust-pos :copy-pos
 	   :make-piece :copy-piece :piece-pivot :piece-offset
 	   :piece-turn :piece-number :piece-config
 	   :empty-grid :empty-board :copy-board
