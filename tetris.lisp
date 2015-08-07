@@ -23,6 +23,9 @@
 (defun get-pos (item data)
   (create-pos (get-item item data)))
 
+(defun random-elt (list)
+  (elt list (random (length list))))
+
 (defun parse-board (data board)
   (dolist (locked (get-item :filled data))
     (setf (aref (board-grid board)
@@ -70,14 +73,30 @@
   (prog1 (logand (ash *seed* -16) #x7fff)
     (setf *seed* (mod (+ (* *seed* 1103515245) 12345) (expt 2 32)))))
 
+(defun adjust-piece-offset (piece x y fn)
+  (when (funcall fn (pos-y (piece-offset piece))) (setf x 0))
+  (incf (pos-x (piece-offset piece)) x)
+  (incf (pos-y (piece-offset piece)) y))
+
+(defun adjust-piece-turn (piece turn)
+  (setf (piece-turn piece) (mod (+ (piece-turn piece) turn) 6)))
+
+(defun make-move (board move)
+  (let* ((new-board (copy-board board))
+	 (next (copy-piece (last-move board))))
+    (push next (board-pieces new-board))
+    (case move
+      (W  (adjust-piece-offset next -1 0 #'null))
+      (E  (adjust-piece-offset next  1 0 #'null))
+      (SW (adjust-piece-offset next -1 1 #'oddp))
+      (SE (adjust-piece-offset next  1 1 #'evenp))
+      (R+ (adjust-piece-turn next  1))
+      (R- (adjust-piece-turn next -1)))
+    new-board))
+
 (defun get-solution (board)
   (update-gui board)
-  (let* ((new-board (copy-board board))
-	 (last (copy-piece (last-move board)))
-	 (offset (piece-offset last)))
-    (setf (piece-offset last) (pos-add offset (make-pos :x 0 :y 1)))
-    (push last (board-pieces new-board))
-    (get-solution new-board)))
+  (get-solution (make-move board (random-elt '(W E SW SE R+ R-)))))
 
 (defun git-commit-cmd ()
   "git log -n1 --format=oneline --abbrev-commit --format=\"format:%h\"")
@@ -169,7 +188,7 @@
 (defun debug-board (board)
   (print-board board)
   (format t "~%")
-  (sleep 1))
+  (sleep 0.2))
 
 (defun make-break-function (with-gui)
   (if (not with-gui)
