@@ -45,11 +45,30 @@
 (defun rnd ()
   (clamp (setf *seed* (mod (+ (* *seed* 1103515245) 12345) (expt 2 32)))))
 
+(defun get-solution () ; this needs board & units as arguments
+  "Ei!")
+
+(defun git-commit-cmd ()
+  "git log -n1 --format=oneline --abbrev-commit --format=\"format:%h\"")
+
+(defun get-tag ()
+  (format nil "~A" (asdf::run-program (git-commit-cmd) :output :string)))
+
+(defun format-solution (id seed solution)
+  (format t "[ { \"problemId\": ~A~%" id)
+  (format t "  , \"seed\": ~A~%" seed)
+  (format t "  , \"tag\": \"~A\"~%" (get-tag))
+  (format t "  , \"solution\": \"~A\"~%" solution)
+  (format t "  }~%")
+  (format t "]~%"))
+
 (defun read-problem (number)
   (with-open-file (problem (format nil "problems/problem_~A.json" number))
     (let* ((data (json:decode-json problem))
 	   (*width* (get-item :width data))
 	   (*height* (get-item :height data))
+	   (id (get-item :id data))
 	   (new-board (empty-board)))
       (parse-board data new-board)
-      (print-board new-board))))
+      (dolist (*seed* (get-item :source-seeds data))
+	(format-solution id *seed* (get-solution))))))
