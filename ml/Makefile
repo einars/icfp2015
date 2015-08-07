@@ -6,8 +6,8 @@ SOURCES = ${FILES}
 RESULT  = tetris
 
 
-#TARGET  = native-code
-TARGET  = debug-code
+TARGET  = native-code
+#TARGET  = debug-code
 
 all:$(TARGET)
 	$(POST)

@@ -13,7 +13,7 @@ type figure_t =
   ; pivot: cell_t
   }
 
-type move_t = MOVE_E | MOVE_W | MOVE_SE | MOVE_SW | TURN_CW | TURN_CCW
+type move_t = MOVE_E | MOVE_W | MOVE_SE | MOVE_SW | TURN_CW | TURN_CCW | LOCK_MARK
 
 let first_moves = 
   [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW ; TURN_CCW ]
@@ -25,13 +25,15 @@ let next_moves = function
   | MOVE_SW -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
   | TURN_CW -> [ MOVE_E ;          MOVE_SE ; MOVE_SW                       ]
   | TURN_CCW-> [          MOVE_W ; MOVE_SE ; MOVE_SW                       ]
+  | LOCK_MARK -> []
 
 let first_moves = 
   [ MOVE_SE ; MOVE_SW ]
 
 let next_moves = function
-  | MOVE_SE -> [  MOVE_SE ; MOVE_SW ]
-  | MOVE_SW -> [  MOVE_SE ; MOVE_SW ]
+  | MOVE_SE -> [  MOVE_SE ; MOVE_SW ; ]
+  | MOVE_SW -> [  MOVE_SE ; MOVE_SW ; ]
+  | MOVE_E  -> [  MOVE_SE ; MOVE_SW ; MOVE_E ]
   | _ -> []
 (*
 
@@ -89,6 +91,7 @@ let s_of_moves moves =
     | MOVE_SE -> "m"
     | TURN_CW -> "q"
     | TURN_CCW -> "k"
+    | LOCK_MARK -> "\\t"
   ) in
   String.concat mcs
 ;;
@@ -322,6 +325,7 @@ let moved_fig fig = function
       { pivot = fig.pivot
       ; members = List.map fig.members ~f:(fun pt -> turn_ccw fig.pivot pt)
       }
+  | LOCK_MARK -> failwith "Unexpected LOCK_MARK"
 
 
 let apply_move state (move:move_t) =
@@ -331,6 +335,21 @@ let apply_move state (move:move_t) =
     let s = { state with current_fig = Some (moved_fig fig move) } in
     validate_figure_state s
 ;;
+
+
+let take_some n (l:'a list) =
+
+  let n_elems = List.length l in
+
+  let rec choose_elems n accu =
+    if n = 0 then accu
+    else let elem = Random.int n_elems in
+      choose_elems (n - 1) ((List.nth_exn l elem) :: accu)
+  in
+  if n_elems <= n then l else choose_elems n []
+;;
+
+
 
 
 let pick_best_move state =
@@ -354,7 +373,8 @@ let pick_best_move state =
         let next_state = apply_move state move in
         pool_move next_state (move :: moves_so_far)
       with
-        | Locked _ -> add_to_final_pool state (move :: moves_so_far)
+        | Locked _ ->
+            add_to_final_pool state (LOCK_MARK :: move :: moves_so_far)
     in
     List.iter moves ~f:consider_move
   in
@@ -362,7 +382,7 @@ let pick_best_move state =
   let rec move_ya () =
     let old_pool = !pool in
     pool := [];
-    List.iter old_pool ~f:(fun (s, m) -> consider_moves s m (next_moves (List.hd_exn m)));
+    List.iter (take_some 3 old_pool) ~f:(fun (s, m) -> consider_moves s m (next_moves (List.hd_exn m)));
     if !pool <> [] then move_ya()
     else !some_final
 

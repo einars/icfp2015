@@ -16,12 +16,11 @@ let run_prog filename opt_tag print_solution () =
     Yojson.Basic.from_file filename |> first_state_of_json |> put_figure_on_board_and_go
   in
   if not print_solution then print_state state
-  else  printf {json|
-{"problemId": %d
+  else  printf {json|[{"problemId": %d
 ,"seed": %d
 ,"tag": "%s"
 ,"solution": "%s"
-}
+}]
 |json} state.id state.initial_seed (Option.value opt_tag ~default:"OCAML.DEV") (s_of_moves state.moves)
 ;;
 

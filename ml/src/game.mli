@@ -9,7 +9,7 @@ type figure_t =
   ; pivot: cell_t
   }
 
-type move_t = MOVE_E | MOVE_W | MOVE_SE | MOVE_SW | TURN_CW | TURN_CCW
+type move_t = MOVE_E | MOVE_W | MOVE_SE | MOVE_SW | TURN_CW | TURN_CCW | LOCK_MARK
 
 type state_t =
   { id: int
