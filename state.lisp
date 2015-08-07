@@ -1,7 +1,7 @@
 (defpackage :icfp/state
   (:nicknames :state)
   (:use :cl)
-  (:export :*board-width* :*board-height*
+  (:export :*board-width* :*board-height* :*total-moves*
 	   :board :board-grid :board-pivot :board-active-cells
 	   :make-pos :pos-x :pos-y :pos-add :pos-sub
 	   :make-piece :copy-piece :piece-pivot :piece-offset
@@ -12,6 +12,7 @@
 
 (defvar *board-width*)
 (defvar *board-height*)
+(defvar *total-moves*)
 
 (defstruct pos x y)
 

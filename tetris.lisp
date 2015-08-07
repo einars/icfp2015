@@ -8,6 +8,8 @@
 (defvar *seed* 0)
 (defvar *units* nil)
 
+(defvar *move-sequence*)
+
 (defun get-item (item data)
   (cdr (assoc item data)))
 
@@ -148,10 +150,15 @@
     (incf (aref (board-grid board) (pos-x pivot) (pos-y pivot)) 4)
     (print-board board)))
 
+(defun generate-move-sequence (&optional (i *total-moves*))
+  (when (> i 0)
+    (cons (mod (rnd) (length *units*)) (generate-move-sequence (- i 1)))))
+
 (defun solve-problem (number &key with-gui)
   (let* ((data (read-problem number))
 	 (*board-width* (get-item :width data))
 	 (*board-height* (get-item :height data))
+	 (*total-moves* (get-item :source-length data))
 	 (*units* (parse-units data))
 	 (id (get-item :id data))
 	 (new-board (empty-board)))
@@ -159,4 +166,5 @@
     (when with-gui
       (run-gui new-board))
     (dolist (*seed* (get-item :source-seeds data))
-      (format-solution id *seed* (get-solution)))))
+      (let ((*move-sequence* (generate-move-sequence)))
+	(format-solution id *seed* (get-solution))))))
