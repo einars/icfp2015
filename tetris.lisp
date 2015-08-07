@@ -1,36 +1,12 @@
 (defpackage :icfp/tetris
   (:nicknames :tetris)
-  (:use :cl :cl-json)
+  (:use :cl :cl-json :icfp/state)
   (:export))
 
 (in-package :icfp/tetris)
 
 (defvar *seed* 0)
 (defvar *units* nil)
-(defvar *width* nil)
-(defvar *height* nil)
-
-(defstruct board grid)
-
-(defstruct piece pivot start cfg)
-
-(defun pretty-cell (number)
-  (case number
-    (0 "o")
-    (1 "x")))
-
-(defun print-board (board)
-  (dotimes (y *height*)
-    (when (oddp y)
-      (format t " "))
-    (dotimes (x *width*)
-      (format t "~A " (pretty-cell (aref (board-grid board) x y))))
-    (format t "~%")))
-
-(defun empty-board ()
-  (let ((board (make-board)))
-    (setf (board-grid board) (make-array (list *width* *height*)))
-    board))
 
 (defun get-item (item data)
   (cdr (assoc item data)))
@@ -41,6 +17,21 @@
 		(get-item :x locked)
 		(get-item :y locked))
 	  1)))
+
+(defstruct piece pivot start cfg)
+
+(defun pretty-cell (number)
+  (case number
+    (0 "o")
+    (1 "x")))
+
+(defun print-board (board)
+  (dotimes (y *board-height*)
+    (when (oddp y)
+      (format t " "))
+    (dotimes (x *board-width*)
+      (format t "~A " (pretty-cell (aref (board-grid board) x y))))
+    (format t "~%")))
 
 (defun rnd ()
   (prog1 (logand (ash *seed* -16) #x7fff)
@@ -53,7 +44,8 @@
   "git log -n1 --format=oneline --abbrev-commit --format=\"format:%h\"")
 
 (defun get-tag ()
-  (format nil "~A" (asdf::run-program (git-commit-cmd) :output :string)))
+  #-windows-host(format nil "~A" (asdf::run-program (git-commit-cmd) :output :string))
+  #+windows-host"")
 
 (defun format-solution (id seed solution)
   (format t "[ { \"problemId\": ~A~%" id)
@@ -77,8 +69,8 @@
 
 (defun solve-problem (number)
   (let* ((data (read-problem number))
-	 (*width* (get-item :width data))
-	 (*height* (get-item :height data))
+	 (*board-width* (get-item :width data))
+	 (*board-height* (get-item :height data))
 	 (*units* (parse-units data))
 	 (id (get-item :id data))
 	 (new-board (empty-board)))
