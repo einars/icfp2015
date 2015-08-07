@@ -5,5 +5,6 @@
   :defsystem-depends-on (:asdf-package-system)
   :depends-on (:alexandria
                :cl-json
+	       :icfp/tetris
 	       :ltk))
 
