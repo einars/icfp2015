@@ -96,8 +96,8 @@ let s_of_moves moves =
     | MOVE_SE -> "m"
     | TURN_CW -> "q"
     | TURN_CCW -> "k"
-    (* | LOCK_MARK -> "\\t" *)
     | LOCK_MARK -> ""
+    (* | LOCK_MARK -> "-" *)
   ) in
   String.concat mcs
 ;;
@@ -349,15 +349,17 @@ let apply_move state (move:move_t) =
 let move_score = function
   | MOVE_E -> 10
   | MOVE_W -> 10
-  | MOVE_SW | MOVE_SE -> 30
+  | MOVE_SW | MOVE_SE -> 10
   | TURN_CW | TURN_CCW -> 1
   | LOCK_MARK -> 0
 ;;
+
 
 let state_has_full_lines state =
   let is_full_line row = not (Array.exists row ~f:(fun e -> not e)) in
   Array.exists state.field ~f:is_full_line
 ;;
+
 
 let state_heuristic state moves =
 
@@ -396,8 +398,6 @@ let state_hash state =
 
 
 let pick_best_move state =
-
-
 
   let seen = ref (Set.empty ~comparator:String.comparator) in
   let pool = ref []
@@ -493,9 +493,11 @@ let states_of_json json =
 let first_state_of_json something = states_of_json something |> List.hd_exn
 
 let rec put_figure_on_board_and_go st =
-  let n, next_seed = next_random st.seed in
-  let fig = List.nth_exn st.figures (n mod (List.length st.figures)) in
   if st.remaining = 0 then raise (Locked st);
+  let n, next_seed = next_random st.seed in
+  let n_fig = (n mod (List.length st.figures)) in
+  printf "Chose fig %d\n" n_fig;
+  let fig = List.nth_exn st.figures n_fig in
 
   let st = { st with
     seed = next_seed;
