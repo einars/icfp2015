@@ -29,7 +29,8 @@
 (defun pretty-cell (number)
   (case number
     (0 "o")
-    (1 "x")))
+    (1 "x")
+    (2 "*")))
 
 (defun print-board (board)
   (dotimes (y *board-height*)
@@ -68,13 +69,25 @@
   (with-open-file (problem (format nil "problems/problem_~A.json" number))
     (json:decode-json problem)))
 
-(defun generate-rotations (config)
-  config)
+(defun rotate-point (pivot point)
+  (let* ((x (- (pos-x point) (pos-x pivot)))
+	 (y (- (pos-y point) (pos-y pivot)))
+	 (a (- x (/ (- y (logand y 1)) 2)))
+	 (b (+ a y)))
+    (make-pos :x (+ (pos-x pivot) (+ (- y) (/ (- b (logand b 1)) 2)))
+	      :y (+ (pos-y pivot) b))))
 
-(defun generate-config (members)
+(defun generate-rotations (pivot config)
+  (dotimes (i 5)
+    (setf (aref config (1+ i))
+	  (mapcar (lambda (point)
+		    (rotate-point pivot point))
+		  (aref config i)))))
+
+(defun generate-config (pivot members)
   (let ((config (make-array 6)))
     (setf (aref config 0) (mapcar (lambda (x) (create-pos x)) members))
-    (generate-rotations config)
+    (generate-rotations pivot config)
     config))
 
 (defun parse-units (data)
@@ -83,7 +96,7 @@
     (dotimes (i (length result) result)
       (let* ((element (elt units i))
 	     (pivot (get-pos :pivot element))
-	     (config (generate-config (get-item :members element)))
+	     (config (generate-config pivot (get-item :members element)))
 	     (start nil)
 	     (piece (make-piece :pivot pivot :config config :start start)))
 	(setf (aref result i) piece)))))
