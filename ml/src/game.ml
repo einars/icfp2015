@@ -19,12 +19,12 @@ let first_moves =
   [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW ; TURN_CCW ]
 
 let next_moves = function
-  | MOVE_E ->  [ MOVE_E ;          MOVE_SE ; MOVE_SW ; TURN_CW             ]
-  | MOVE_W ->  [          MOVE_W ; MOVE_SE ; MOVE_SW            ; TURN_CCW ]
+  | MOVE_E ->  [ MOVE_E ;          MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
+  | MOVE_W ->  [          MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
   | MOVE_SE -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
   | MOVE_SW -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
-  | TURN_CW -> [ MOVE_E ;          MOVE_SE ; MOVE_SW                       ]
-  | TURN_CCW-> [          MOVE_W ; MOVE_SE ; MOVE_SW                       ]
+  | TURN_CW -> [ MOVE_E ;          MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
+  | TURN_CCW-> [          MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
   | LOCK_MARK -> []
 
 let s_of_pt pt = sprintf "[%d:%d]" (fst pt) (snd pt)
@@ -49,6 +49,7 @@ type state_t =
   ; current_fig: figure_t option
   ; current_fig_offs: int*int
   ; moves: move_t list
+  ; base_hash: string
 }
 
 exception Locked of state_t
@@ -65,6 +66,18 @@ let mut_drop_full_lines state =
   done;
   state
 ;;
+
+let with_base_hash state =
+  let h = ref [] in
+  for i = 0 to state.height - 1 do
+    for j = 0 to state.width - 1 do
+      h := (if state.field.(i).(j) then "X" else "-") :: !h
+    done;
+  done;
+  { state with base_hash = String.concat !h }
+;;
+
+
 
 let freeze_figure state =
 
@@ -84,7 +97,7 @@ let freeze_figure state =
   { state with
     current_fig = None;
     field = new_field
-  }
+  } |> with_base_hash
 ;;
 
 
@@ -347,17 +360,17 @@ let apply_move state (move:move_t) =
 
 
 let move_score = function
-  | MOVE_E -> 10
-  | MOVE_W -> 10
-  | MOVE_SW | MOVE_SE -> 10
+  | MOVE_E -> 100
+  | MOVE_W -> 100
+  | MOVE_SW | MOVE_SE -> 200
   | TURN_CW | TURN_CCW -> 1
   | LOCK_MARK -> 0
 ;;
 
 
-let state_has_full_lines state =
+let state_full_lines state =
   let is_full_line row = not (Array.exists row ~f:(fun e -> not e)) in
-  Array.exists state.field ~f:is_full_line
+  Array.count state.field ~f:is_full_line
 ;;
 
 
@@ -365,33 +378,34 @@ let state_heuristic state moves =
 
   let figure_score = function
   | None -> 0
+  (* | Some fig -> List.fold fig.members ~init:0 ~f:(fun accu (x,y) -> accu - y - (if (y > 0 && state.field.(y - 1).(x)) then 0 else 10)) *)
   | Some fig -> List.fold fig.members ~init:0 ~f:(fun accu (x,y) -> accu - y)
   in
 
   List.fold moves ~init:0 ~f:(fun accum move -> accum + move_score move)
-  + (if state_has_full_lines state then 500 else 0)
+  + (500 * (state_full_lines state))
   + figure_score state.current_fig
 ;;
 
 let take_some_states n (l:'a list) =
 
-  let sl = List.sort ~cmp:(fun (a, m) (b, mb) -> (state_heuristic a m) - (state_heuristic b m)) l in
-  List.take sl n
+  (* printf "taking some states\n%!"; *)
+
+  let heured = List.map l ~f:(fun (a,m) -> (state_heuristic a m), a, m) in
+  let sl = List.sort ~cmp:(fun (ha, a, m) (hb, b, mb) -> hb - ha) heured in
+  List.map (List.take sl n) ~f:(fun (a,b,c) -> (b,c))
 ;;
 
 
 let state_hash state =
-  let h = ref [] in
-  for i = 0 to state.height - 1 do
-    for j = 0 to state.width - 1 do
-      h := (if state.field.(i).(j) then "X" else "-") :: !h
-    done;
-  done;
+  
   ( match state.current_fig with
-  | Some fig -> List.iter fig.members ~f:(fun m -> h := (s_of_pt m) :: !h)
-  | None -> ()
+  | Some fig ->
+    let h = ref [state.base_hash] in
+    List.iter fig.members ~f:(fun m -> h := (s_of_pt m) :: !h);
+    String.concat !h
+  | None -> state.base_hash
   );
-  String.concat !h
 ;;
   
 
@@ -477,7 +491,8 @@ let states_of_json json =
     initial_seed = 0;
     seed = 0;
     current_fig_offs = 0,0;
-    moves = []
+    moves = [];
+    base_hash = ""
   } in
 
   List.map source_seeds ~f:(fun (seed) ->
@@ -493,6 +508,7 @@ let states_of_json json =
 let first_state_of_json something = states_of_json something |> List.hd_exn
 
 let rec put_figure_on_board_and_go st =
+  let st = with_base_hash st in
   if st.remaining = 0 then raise (Locked st);
   let n, next_seed = next_random st.seed in
   let n_fig = (n mod (List.length st.figures)) in
@@ -509,6 +525,7 @@ let rec put_figure_on_board_and_go st =
 
 let solve state =
   eprintf "Solving seed %08x\n%!" state.initial_seed;
+  (* ignore(print_state state); *)
   put_figure_on_board_and_go state
 ;;
 

@@ -23,6 +23,7 @@ type state_t =
   ; current_fig: figure_t option
   ; current_fig_offs: int*int
   ; moves: move_t list
+  ; base_hash: string
 }
 
 
