@@ -12,6 +12,9 @@
 (defvar *seed* 0)
 (defvar *units* nil)
 (defvar *break* nil)
+(defvar *best* nil)
+
+(defconstant +pool-size+ 10)
 
 (defun update-gui (board)
   (funcall *break* board))
@@ -99,9 +102,14 @@
 (defun is-locking (board)
   (is-outside board (board-active-cells board)))
 
+(defun fetch-next-unit (number)
+  (if (< number *total-moves*)
+      (copy-piece (aref *units* (aref *move-sequence* number)))
+      (make-piece)))
+
 (defun get-new-piece (board)
   (let* ((number (1+ (piece-number (last-move board))))
-	 (next (copy-piece (aref *units* (aref *move-sequence* number)))))
+	 (next (fetch-next-unit number)))
     (setf (piece-number next) number)
     next))
 
@@ -170,13 +178,56 @@
 	  ((is-bad-move new-board) nil)
 	  (t new-board))))
 
-(defun get-next-board (board)
-  (or (make-move board (random-elt '(:E :W :SE :SW :R+ :R-)))
-      (get-next-board board)))
+(defun is-finished (board)
+  (= *total-moves* (piece-number (first (board-pieces board)))))
+
+(defun goodness (board)
+   ;; ***** TODO ******
+  (length (board-pieces board)))
+
+(defun try-move (board)
+  (when (not (is-finished board))
+    (make-move board (random-elt '(:W :E :SW :SE :R+ :R-)))))
+
+(defun best-goodness (index)
+  (goodness (aref *best* index)))
+
+(defun find-candidate (fn)
+  (let ((candidate 0))
+    (dotimes (index +pool-size+ candidate)
+      (when (funcall fn (best-goodness index) (best-goodness candidate))
+	(setf candidate index)))))
+
+(defun find-best ()
+  (aref *best* (find-candidate #'>)))
+
+(defun find-worst-index ()
+  (find-candidate #'<))
+
+(defun update (victim)
+  (let* ((old-board (aref *best* victim))
+	 (new-board (try-move old-board)))
+    (when (and new-board (>= (goodness new-board) (goodness old-board)))
+      (setf (aref *best* (find-worst-index)) new-board))
+    (update-gui old-board)
+    (find-solution)))
+
+(defun find-victim ()
+  (let ((offset (random +pool-size+)))
+    (dotimes (i +pool-size+ nil)
+      (let ((victim (mod (+ i offset) +pool-size+)))
+	(when (not (is-finished (aref *best* victim)))
+	  (return-from find-victim victim))))))
+
+(defun find-solution ()
+  (let ((victim (find-victim)))
+    (if (null victim)
+	(find-best)
+	(update victim))))
 
 (defun get-solution (board)
-  (update-gui board)
-  (get-solution (get-next-board board)))
+  (let ((*best* (make-array +pool-size+ :initial-element board)))
+    (find-solution)))
 
 (defun git-commit-cmd ()
   "git log -n1 --format=oneline --abbrev-commit --format=\"format:%h\"")
@@ -188,11 +239,14 @@
   #-windows-host(format-commit)
   #+windows-host"")
 
-(defun format-solution (id seed solution)
+(defun print-solution (board)
+  (format nil "~A" (board-cmd board)))
+
+(defun format-solution (id seed board)
   (format t "[ { \"problemId\": ~A~%" id)
   (format t "  , \"seed\": ~A~%" seed)
   (format t "  , \"tag\": \"~A\"~%" (get-tag))
-  (format t "  , \"solution\": \"~A\"~%" solution)
+  (format t "  , \"solution\": \"~A\"~%" (print-solution board))
   (format t "  }~%")
   (format t "]~%"))
 
