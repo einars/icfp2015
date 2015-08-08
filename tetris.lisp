@@ -4,6 +4,7 @@
   (:export :solve-problem
 	   :get-next-board
 	   :update-gui
+	   :get-item
 	   :make-move))
 
 (in-package :icfp/tetris)
