@@ -24,6 +24,9 @@ type state_t =
   ; current_fig_offs: int*int
   ; moves: move_t list
   ; base_hash: string
+  ; score: int
+  ; score_adj: int
+  ; ls_old: int
 }
 
 

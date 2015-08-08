@@ -56,6 +56,10 @@ type state_t =
   ; current_fig_offs: int*int
   ; moves: move_t list
   ; base_hash: string
+  (* score stuff *)
+  ; score: int
+  ; score_adj: int
+  ; ls_old: int
 }
 
 exception Locked of state_t
@@ -63,15 +67,25 @@ exception Finished of state_t
 exception Impossible
 
 let mut_drop_full_lines state =
+  (* and update score *)
+  let s_size = state.score_adj
+  and s_ls = ref 0
+  and s_ls_old = state.ls_old in
+
   for i = state.height - 1 downto 0 do
     if not (Array.exists state.field.(i) ~f:(fun e -> not e)) then begin
+      s_ls := !s_ls + 1;
       for j = i downto 1 do
         state.field.(j) <- state.field.(j - 1);
       done;
       state.field.(0) <- Array.init state.width (fun n -> false)
     end;
   done;
-  state
+  let s_points = (s_size + 100 * (1 + !s_ls) * (!s_ls) / 2) in
+  { state with
+    score = state.score + s_points + (if s_ls_old > 1 then ((s_ls_old - 1) * s_points / 10) else 0);
+    ls_old = !s_ls
+  }
 ;;
 
 let with_base_hash state =
@@ -95,15 +109,18 @@ let freeze_figure state =
 
   let new_field = clone_field state.field in
   let ox, oy = state.current_fig_offs in
+  let score_adj = 
   (match state.current_fig with
-    | Some fig -> 
+    | Some fig ->
         List.iter fig.members ~f:(fun (x, y) -> new_field.(y + oy).(x + ox) <- true);
-    | None -> ()
-  );
+        List.length fig.members;
+    | None -> 0
+  ) in
 
   { state with
     current_fig = None;
-    field = new_field
+    field = new_field;
+    score_adj = score_adj;
   } |> with_base_hash
 ;;
 
@@ -128,7 +145,7 @@ let print_state state =
 
   let s = freeze_figure state in
   
-  printf "%d×%d ID=%d, all_figs=%d, remaining=%d, seed=%d\n" s.width s.height s.id (List.length s.figures) s.remaining s.initial_seed;
+  printf "%d×%d ID=%d, all_figs=%d, remaining=%d, seed=%d score=%d\n" s.width s.height s.id (List.length s.figures) s.remaining s.initial_seed s.score;
   for row = 0 to s.height - 1 do
     if (row % 2 = 1) then printf " ";
     for col = 0 to s.width - 1 do
@@ -515,7 +532,10 @@ let states_of_json json = Yojson.Basic.Util.(
     seed = 0;
     current_fig_offs = 0,0;
     moves = [];
-    base_hash = ""
+    base_hash = "";
+    score = 0;
+    score_adj = 0;
+    ls_old = 0;
   } in
 
   List.map source_seeds ~f:(fun (seed) ->
