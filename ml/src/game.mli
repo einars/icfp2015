@@ -12,5 +12,6 @@ val first_state_of_json: Basic.json -> state_t
 val states_of_json: Basic.json -> state_t list
 
 val s_of_moves: move_t list -> string
+val get_solution: state_t -> string
 
 val pt_solid : bool -> state_t -> int * int -> bool

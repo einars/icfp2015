@@ -38,7 +38,7 @@ let run_prog filenames opt_tag first is_debug _ _ _ _ () =
 ,"tag": "%s"
 ,"solution": "%s"
 }
-|json} state.id state.initial_seed (Option.value opt_tag ~default:"OCAML.DEV") ("FIXME")
+|json} state.id state.initial_seed (Option.value opt_tag ~default:"OCAML.DEV") (get_solution state)
     )) |> printf "[%s]";
   )
 

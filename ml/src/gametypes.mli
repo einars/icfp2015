@@ -9,7 +9,7 @@ type figure_t =
 
 type move_t = MOVE_E | MOVE_W | MOVE_SE | MOVE_SW | TURN_CW | TURN_CCW | LOCK_MARK
 
-type diff_t = LivePlacement of figure_t * move_t list * string list (* moves, normalized_masks *)
+type diff_t = LivePlacement of figure_t * move_t list
   | LockedPlacement of figure_t * move_t list
   | ColumnDrop of int
   | Finish of bool
