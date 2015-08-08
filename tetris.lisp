@@ -230,7 +230,6 @@
 	(setf r-pattern (copy-list r-pattern))
 	(setf r-pattern (mapcar (lambda (x) (push :R+ x)) r-pattern))
 	(setf patterns (append r-pattern patterns))))
-    (format t "~A~%" patterns)
     patterns))
 
 (defun try-all-moves (board)
@@ -378,8 +377,8 @@
 
 (defun make-break-function (with-gui)
   (if (not with-gui)
-      ; #'identity
-      #'debug-board
+      #'identity
+      ; #'debug-board
       (lambda (board)
 	(with-simple-restart (continue-processing "Continue?")
 	  (signal 'board-update :new-board board)))))
