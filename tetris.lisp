@@ -100,10 +100,31 @@
     (setf (piece-number next) number)
     next))
 
+(defun is-row-full (row board &optional (i 0))
+  (cond ((= i *board-width*) t)
+	((= 0 (aref (board-grid board) i row)) nil)
+	(t (is-row-full row board (1+ i)))))
+
+(defun delete-row (row board)
+  (let ((grid (board-grid board)))
+    (dotimes (x row)
+      (dotimes (i *board-width*)
+	(setf (aref grid i (- row x)) (aref grid i (- row (+ x 1))))))
+    (dotimes (i *board-width*)
+      (setf (aref grid i 0) 0))))
+
+(defun test-and-update-if-full (row board)
+  (when (is-row-full row board)
+    (delete-row row board)))
+
 (defun lock-piece (board)
   (setf (board-grid board) (copy-grid board))
-  (dolist (i (board-active-cells board))
-    (setf (aref (board-grid board) (car i) (cdr i)) 1)))
+  (let ((rows nil))
+    (dolist (i (board-active-cells board))
+      (setf (aref (board-grid board) (car i) (cdr i)) 1)
+      (push (cdr i) rows))
+    (dolist (i (remove-duplicates rows))
+      (test-and-update-if-full i board))))
 
 (defun lock-down (board)
   (pop (board-pieces board))
@@ -141,7 +162,7 @@
 	  (t new-board))))
 
 (defun get-next-board (board)
-  (or (make-move board (random-elt '(E W)))
+  (or (make-move board (random-elt '(E W SE SW R+ R-)))
       (get-next-board board)))
 
 (defun get-solution (board)
