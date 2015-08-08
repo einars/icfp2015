@@ -1,7 +1,10 @@
 (defpackage :icfp/tetris
   (:nicknames :tetris)
   (:use :cl :cl-json :icfp/state :icfp/gui)
-  (:export :solve-problem))
+  (:export :solve-problem
+	   :get-next-board
+	   :update-gui
+	   :make-move))
 
 (in-package :icfp/tetris)
 
