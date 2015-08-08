@@ -7,7 +7,7 @@
 	   :make-piece :copy-piece :piece-pivot :piece-offset :active-cells
 	   :score-size :score-lines :score-history :make-score
 	   :piece-turn :piece-number :piece-config :board-log
-	   :empty-grid :empty-board :copy-board
+	   :empty-grid :empty-board :copy-board :board-cmd
 	   :board-update :board-update-board :board-update-msg
 	   :continue-processing))
 
@@ -38,7 +38,7 @@
 
 (defstruct score (size 0) (lines 0) history)
 
-(defstruct board grid pieces log)
+(defstruct board grid pieces log cmd)
 
 (defun last-move (board)
   (first (board-pieces board)))

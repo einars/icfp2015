@@ -157,6 +157,7 @@
 	 (next (copy-piece (last-move board))))
     (setf (piece-offset next) (copy-pos (piece-offset next)))
     (push next (board-pieces new-board))
+    (push move (board-cmd new-board))
     (case move
       (:W  (adjust-piece-offset next -1 0 #'null))
       (:E  (adjust-piece-offset next  1 0 #'null))
