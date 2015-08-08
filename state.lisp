@@ -5,7 +5,8 @@
 	   :board :board-grid :board-pivot :board-active-cells :board-pieces
 	   :make-pos :pos-x :pos-y :pos-add :pos-sub :adjust-pos :copy-pos
 	   :make-piece :copy-piece :piece-pivot :piece-offset :active-cells
-	   :piece-turn :piece-number :piece-config
+	   :score-size :score-lines :score-history :make-score
+	   :piece-turn :piece-number :piece-config :board-log
 	   :empty-grid :empty-board :copy-board
 	   :board-update :board-update-board :board-update-msg
 	   :continue-processing))
@@ -35,7 +36,9 @@
 
 (defstruct piece pivot config offset (turn 0) (number 0))
 
-(defstruct board grid pieces)
+(defstruct score (size 0) (lines 0) history)
+
+(defstruct board grid pieces log)
 
 (defun last-move (board)
   (first (board-pieces board)))
