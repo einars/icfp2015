@@ -19,10 +19,11 @@
 
 (define-condition board-update ()
   ((new-board :initarg :new-board
-	      :reader board-update-board)
+	      :reader board-update-board
+	      :initform nil)
    (debug-msg :initarg :debug-msg
 	      :reader board-update-msg
-	      :initform "")))
+	      :initform nil)))
 
 (defstruct pos x y)
 
