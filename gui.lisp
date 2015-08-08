@@ -26,6 +26,7 @@
 ;;; Internal special vars
 (defvar *last-figure*)
 (defvar *curr-points*)
+(defvar *curr-board*)
 (defvar *canvas*)
 (defvar *filled-cells*)
 (defvar *move-history*)
@@ -175,6 +176,7 @@
       (apply #'replace-figure prev-point))))
 
 (defun redraw-board (new-board)
+  (setf *curr-board* new-board)
   (dotimes (x *board-width*)
     (dotimes (y *board-height*)
       (let ((elem-set (aref (board-grid new-board) x y))
@@ -190,18 +192,36 @@
     (apply #'replace-figure pivot (board-active-cells new-board)))
   (setf *move-history* nil))
 
+(defun set-proportional-sizes (base-size)
+  (setf *bg-honeycomb-r* base-size
+	*grid-x-step* *bg-honeycomb-r*
+	*grid-y-step* (round (* 0.866 *grid-x-step*))
+	*placed-honeycomb-r* (- *bg-honeycomb-r* 2)
+	*pivot-r* (floor *placed-honeycomb-r* 2)))
+
+(defun zoom-action (factor)
+  (lambda ()
+    (set-proportional-sizes (round (* *bg-honeycomb-r* factor)))
+    (clear *canvas*)
+    (create-board-background *board-width* *board-height*)
+    (when *last-figure*
+      (setf *last-figure* nil)
+      (apply #'replace-figure *curr-points*))
+    (setf *filled-cells*
+	  (make-array (list *board-width* *board-height*) :initial-element nil))
+    (when *curr-board*
+      (redraw-board *curr-board*))))
+
 (defun run-gui (init-board update-fn)  
   (start-wish)
   (let* ((*last-figure* nil)
-	(*canvas* nil)
-	(*filled-cells* (make-array (list *board-width* *board-height*) :initial-element nil))
-	(*move-history* nil)
-	(*auto-play-moves* 0)
-	(*bg-honeycomb-r* (min (floor 350 *board-height*) (floor 550 *board-width*)))
-	(*grid-x-step* *bg-honeycomb-r*)
-	(*grid-y-step* (round (* 0.866 *grid-x-step*)))
-	(*placed-honeycomb-r* (- *bg-honeycomb-r* 2))
-	(*pivot-r* (floor *placed-honeycomb-r* 2)))
+	 (*canvas* nil)
+	 (*filled-cells* (make-array (list *board-width* *board-height*) :initial-element nil))
+	 (*move-history* nil)
+	 (*auto-play-moves* 0)
+	 *bg-honeycomb-r* *grid-x-step* *grid-y-step* *placed-honeycomb-r* *pivot-r*
+	 *curr-points* *curr-board*)
+    (set-proportional-sizes (min (floor 350 *board-height*) (floor 550 *board-width*)))
     (let* ((board-scrolled-canvas (make-instance 'scrolled-canvas
 						 :width 800
 						 :height 800))
@@ -212,29 +232,38 @@
 				      :width 50))
 	   (button-bar (make-instance 'frame
 				      :width 800))
+	   (btn-speed+ (make-instance 'button 
+				      :master top-bar
+				      :text "   Speed +  "
+				      :command (lambda ()
+						 (setf *auto-play-delay* (* *auto-play-delay* 0.8)))))
+	   (btn-speed- (make-instance 'button 
+				      :master top-bar
+				      :text "   Speed -  "
+				      :command (lambda ()
+						 (setf *auto-play-delay* (* *auto-play-delay* 1.25)))))
+	   (btn-zoom+ (make-instance 'button 
+				     :master top-bar
+				     :text "    Zoom +  "
+				     :command (zoom-action 1.25)))
+	   (btn-zoom- (make-instance 'button 
+				     :master top-bar
+				     :text "    Zoom -  "
+				     :command (zoom-action 0.8)))
 	   (btn-step (make-instance 'button 
 				    :master top-bar
-				    :text "   Step   "
+				    :text "    Step    "
 				    :command (lambda ()
 					       (invoke-restart 'continue-processing))))
-	   (btn-step10 (make-instance 'button 
-				      :master top-bar
-				      :text " Step x10 "
-				      :command (lambda ()
-						 (setf *auto-play-moves* 10)
-						 (invoke-restart 'continue-processing))))
-	   (btn-step50 (make-instance 'button 
-				      :master top-bar
-				      :text " Step x50 "
-				      :command (lambda ()
-						 (setf *auto-play-moves* 50)
-						 (invoke-restart 'continue-processing))))
 	   (btn-step-inf (make-instance 'button 
-				      :master top-bar
-				      :text "   Play!  "
-				      :command (lambda ()
-						 (setf *auto-play-moves* -1)
-						 (invoke-restart 'continue-processing))))
+					:master top-bar
+					:text " Start/Stop "
+					:command (lambda ()
+						   (if (>= *auto-play-moves* 0)
+						       (progn
+							 (setf *auto-play-moves* -1)
+							 (invoke-restart 'continue-processing))
+						       (setf *auto-play-moves* 0)))))
 	   (btn-undo (make-instance 'button 
 				    :master button-bar
 				    :text " Undo! "
@@ -275,10 +304,12 @@
       (redraw-board init-board)
       (pack top-bar :side :top)
       (pack btn-step :side :left)
-      (pack btn-step10 :side :left)
-      (pack btn-step50 :side :left)
       (pack btn-step-inf :side :left)
       (pack debug-text :side :left)
+      (pack btn-speed+ :side :left)
+      (pack btn-speed- :side :left)
+      (pack btn-zoom+ :side :left)
+      (pack btn-zoom- :side :left)
       (pack board-scrolled-canvas :expand 1 :fill :both)
       (scrollregion *canvas* 0 0 3000 3000)
       (pack button-bar :side :top)
@@ -298,8 +329,10 @@
 						       (mainloop)
 						       (progn
 							 (decf *auto-play-moves*)
-							 (sleep *auto-play-delay*)
-							 (invoke-restart 'continue-processing))))))
+							 (after (floor (* 1000 *auto-play-delay*))
+								(lambda ()
+								  (invoke-restart 'continue-processing)))
+							 (mainloop))))))
 		      (funcall update-fn))
 	(#+ccl ccl::cant-throw-error #+sbcl control-error (c)
 	       (declare (ignore c))
