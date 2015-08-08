@@ -6,5 +6,6 @@
   :depends-on (:alexandria
                :cl-json
 	       :icfp/tetris
+	       :icfp/simulator
 	       :ltk))
 
