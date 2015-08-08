@@ -1,7 +1,7 @@
 (defpackage :icfp/simulator
   (:nicknames :simulator)
   (:use :cl :alexandria :cl-json :icfp/state :icfp/gui :icfp/tetris)
-  (:export ))
+  (:export :play))
 
 (in-package :icfp/simulator)
 
