@@ -220,7 +220,7 @@
 	(downward nil))
     (dotimes (i (1+ *board-height*))
       (push (if (oddp i) :SW :SE) downward))
-    (dotimes (i (1+ (/ *board-width* 2)))
+    (dotimes (i (1+ (floor *board-width* 2)))
       (push :E eastward)
       (push :W westward)
       (push (append eastward downward) patterns)
