@@ -5,7 +5,9 @@
 	   :get-next-board
 	   :update-gui
 	   :get-item
-	   :make-move))
+	   :make-move
+	   :*move-sequence*
+	   :*units*))
 
 (in-package :icfp/tetris)
 

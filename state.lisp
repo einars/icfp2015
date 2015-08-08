@@ -9,7 +9,8 @@
 	   :piece-turn :piece-number :piece-config :board-log :board-spot
 	   :empty-grid :empty-board :copy-board :board-cmd :board-stats
 	   :board-update :board-update-board :board-update-msg
-	   :continue-processing))
+	   :continue-processing
+	   :convert-pos))
 
 (in-package :icfp/state)
 
