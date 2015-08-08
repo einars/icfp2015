@@ -403,6 +403,7 @@ let state_has_full_lines st = state_full_lines st > 0
 
 let state_heuristic state moves =
 
+  (*
   let run_bonus pt = 
 
     let rec n_consecutive (x,y) diff =
@@ -412,6 +413,7 @@ let state_heuristic state moves =
 
     (n_consecutive pt (-1)) + (n_consecutive pt 1)
   in
+  *)
 
   let hole_penalty pt all_pts = 
     let is_solid (x,y) =
@@ -438,11 +440,13 @@ let state_heuristic state moves =
       (* let height_penalty = (by + 1) in *)
       let height_penalty = ay in (* List.fold fig.members ~init:0 ~f:(fun accu (x,y) -> accu + y) in *)
 
+  (*
       let run_bonus = 
         if is_locked then (
           List.fold fig.members ~init:0 ~f:(fun accum pt -> accum + run_bonus pt)
         ) else 0
       in
+      *)
       let hole_penalty = 
         if is_locked then (
           List.fold fig.members ~init:0 ~f:(fun accum pt -> accum + hole_penalty pt fig.members);
