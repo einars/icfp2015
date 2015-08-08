@@ -448,7 +448,7 @@ let state_heuristic state moves =
           List.fold fig.members ~init:0 ~f:(fun accum pt -> accum + hole_penalty pt fig.members);
         ) else 0
       in
-      - height_penalty + run_bonus - 3 * hole_penalty
+      - height_penalty (*+ run_bonus / 5*) - hole_penalty
       (* List.fold fig.members ~init:0 ~f:(fun accu (x,y) -> accu - y) *)
   in
 
