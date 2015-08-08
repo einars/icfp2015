@@ -1,7 +1,7 @@
 (defpackage :icfp/tetris
   (:nicknames :tetris)
   (:use :cl :cl-json :icfp/state :icfp/gui)
-  (:export))
+  (:export :solve-problem))
 
 (in-package :icfp/tetris)
 
@@ -254,7 +254,10 @@
       (get-solution board)
       (run-gui board (lambda () (get-solution board)))))
 
-(defun solve-problem (number &key with-gui)
+(defun default-solver (id seed board with-gui)
+  (format-solution id seed (solution-with-gui board with-gui)))
+
+(defun solve-problem (number &key with-gui (solver #'default-solver))
   (let* ((data (read-problem number))
 	 (*board-width* (get-item :width data))
 	 (*board-height* (get-item :height data))
@@ -268,4 +271,4 @@
       (let ((*seed* source-seed))
 	(let ((*move-sequence* (generate-move-sequence)))
 	  (init-board-pieces new-board (aref *move-sequence* 0))
-	  (format-solution id source-seed (solution-with-gui new-board with-gui)))))))
+	  (funcall solver id source-seed new-board with-gui))))))
