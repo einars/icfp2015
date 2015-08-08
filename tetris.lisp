@@ -235,11 +235,30 @@
 (defun try-all-moves (board)
   (remove nil (mapcar (lambda (test) (try-sequence board test)) *patterns*)))
 
-(defun goodness (board)
-  (board-stats board))
+(defun highest-in-column (board x)
+  (let ((roof nil))
+    (dotimes (y *board-height* *board-height*)
+      (let ((cell (aref (board-grid board) x y)))
+	(cond ((= 1 cell) (setf roof t))
+	      ((and roof (= 0 cell)) (return-from highest-in-column y)))))))
+
+(defun highest-hole (board &optional (x 0))
+  (min (highest-in-column board x)
+       (cond ((= x (1- *board-width*)) *board-height*)
+	     (t (highest-hole board (1+ x))))))
+
+(defun remove-lowest (top holes pool)
+  (cond ((null pool) nil)
+	((< (first holes) top)
+	 (remove-lowest top (rest holes) (rest pool)))
+	(t (cons (first pool) (remove-lowest top (rest holes) (rest pool))))))
 
 (defun best-of (pool)
-  (first (sort pool #'> :key #'goodness)))
+  (when pool
+    (let* ((heights (mapcar #'highest-hole pool))
+	   (highest (reduce #'max heights))
+	   (pruned (remove-lowest highest heights pool)))
+      (first (sort pruned #'> :key #'board-stats)))))
 
 (defun get-solution (board)
   (dotimes (*rank* *total-moves* board)
