@@ -14,8 +14,6 @@
 (defvar *break* nil)
 (defvar *best* nil)
 
-(defparameter *pool-size* 10)
-
 (defun update-gui (board)
   (funcall *break* board))
 
@@ -33,12 +31,16 @@
 (defun random-elt (list)
   (elt list (random (length list))))
 
+(defun update-board-height (board y)
+  (setf (board-stats board) (min y (board-stats board))))
+
 (defun parse-board (data board)
+  (setf (board-stats board) *board-height*)
   (dolist (locked (get-item :filled data))
-    (setf (aref (board-grid board)
-		(get-item :x locked)
-		(get-item :y locked))
-	  1)))
+    (let ((x (get-item :x locked))
+	  (y (get-item :y locked)))
+      (update-board-height board y)
+      (setf (aref (board-grid board) x y) 1))))
 
 (defun pretty-cell (number)
   (case number
@@ -131,6 +133,7 @@
 
 (defun test-and-update-if-full (row board score)
   (when (is-row-full row board)
+    (incf (board-stats board))
     (incf (score-lines score))
     (delete-row row board)))
 
@@ -146,6 +149,7 @@
     (push score (board-log board))
     (dolist (i (board-active-cells board))
       (setf (aref (board-grid board) (car i) (cdr i)) 1)
+      (update-board-height board (cdr i))
       (incf (score-size score))
       (push (cdr i) rows))
     (dolist (i (remove-duplicates rows))
@@ -193,62 +197,57 @@
 	  ((is-bad-move new-board) nil)
 	  (t new-board))))
 
-(defun distance (a b)
-  (+ (abs (- (car a) (car b)))
-     (abs (- (cdr a) (cdr b)))))
+(defun try-move (board move)
+  (update-gui board)
+  (when (not (board-done board))
+    (make-move board move)))
 
-(defun distances-to-sweetspot (board)
-  (let ((sweet (board-spot board)))
-    (mapcar (lambda (p) (distance p sweet))
-	    (board-active-cells board))))
+(defvar *rank* nil)
+(defvar *patterns* nil)
+
+(defun board-rank (board)
+  (piece-number (last-move board)))
+
+(defun try-sequence (board sequence)
+  (cond ((or (null board) (null sequence)) nil)
+	((> (board-rank board) *rank*) board)
+	(t (try-sequence (try-move board (first sequence)) (rest sequence)))))
+
+(defun generate-movement-patterns ()
+  (let ((patterns nil)
+	(eastward nil)
+	(westward nil)
+	(downward nil))
+    (dotimes (i (1+ *board-height*))
+      (push (if (oddp i) :SW :SE) downward))
+    (dotimes (i (1+ (/ *board-width* 2)))
+      (push :E eastward)
+      (push :W westward)
+      (push (append eastward downward) patterns)
+      (push (append westward downward) patterns))
+    (let ((r-pattern patterns))
+      (dotimes (i 5)
+	(setf r-pattern (copy-list r-pattern))
+	(let ((rotated (mapcar (lambda (x) (push :R+ x)) r-pattern)))
+	  (setf patterns (append rotated patterns)))))
+    patterns))
+
+(defun try-all-moves (board)
+  (remove nil (mapcar (lambda (test) (try-sequence board test)) *patterns*)))
 
 (defun goodness (board)
-  (- (+ *board-height* *board-width*)
-     (reduce #'min (distances-to-sweetspot board))
+  (board-stats board))
 
-(defun try-move (board)
-  (when (not (board-done board))
-    (make-move board (random-elt '(:W :E :SW :SE :R+ :R-)))))
-
-(defun best-goodness (index)
-  (goodness (aref *best* index)))
-
-(defun find-candidate (fn)
-  (let ((candidate 0))
-    (dotimes (index *pool-size* candidate)
-      (when (funcall fn (best-goodness index) (best-goodness candidate))
-	(setf candidate index)))))
-
-(defun find-best ()
-  (aref *best* (find-candidate #'>)))
-
-(defun find-worst-index ()
-  (find-candidate #'<))
-
-(defun update (victim)
-  (let* ((old-board (aref *best* victim))
-	 (new-board (try-move old-board)))
-    (when (and new-board (> (goodness new-board) (goodness old-board)))
-      (setf (aref *best* (find-worst-index)) new-board))
-    (update-gui old-board)
-    (find-solution)))
-
-(defun find-victim ()
-  (let ((offset (random *pool-size*)))
-    (dotimes (i *pool-size* nil)
-      (let ((victim (mod (+ i offset) *pool-size*)))
-	(when (not (board-done (aref *best* victim)))
-	  (return-from find-victim victim))))))
-
-(defun find-solution ()
-  (let ((victim (find-victim)))
-    (if (null victim)
-	(find-best)
-	(update victim))))
+(defun best-of (pool)
+  (first (sort pool #'> :key #'goodness)))
 
 (defun get-solution (board)
-  (let ((*best* (make-array *pool-size* :initial-element board)))
-    (find-solution)))
+  (dotimes (*rank* *total-moves* board)
+    (let ((all-moves (try-all-moves board)))
+      (let ((best-move (best-of all-moves)))
+	(if best-move
+	    (setf board best-move)
+	    (return-from get-solution board))))))
 
 (defun git-commit-cmd ()
   "git log -n1 --format=oneline --abbrev-commit --format=\"format:%h\"")
@@ -367,6 +366,7 @@
 	 (*board-width* (get-item :width data))
 	 (*board-height* (get-item :height data))
 	 (*total-moves* (get-item :source-length data))
+	 (*patterns* (generate-movement-patterns))
 	 (*break* (make-break-function with-gui))
 	 (*units* (parse-units data))
 	 (id (get-item :id data))
