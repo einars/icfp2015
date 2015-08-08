@@ -403,9 +403,53 @@ let state_has_full_lines st = state_full_lines st > 0
 
 let state_heuristic state moves =
 
+  let run_bonus pt = 
+
+    let rec n_consecutive (x,y) diff =
+      if x < 0 || x >= state.width || (not state.field.(y).(x)) then 0 else
+        1 + n_consecutive (x + diff, y) diff
+    in
+
+    (n_consecutive pt (-1)) + (n_consecutive pt 1)
+  in
+
+  let hole_penalty pt all_pts = 
+    let is_solid (x,y) =
+      if x < 0 || x >= state.width || y < 0 || y >= state.height then true else
+        if state.field.(y).(x) then true
+        else List.mem all_pts (x,y)
+    in
+
+    (if move_sw pt |> is_solid then 1 else 0) + (if move_se pt |> is_solid then 1 else 0)
+  in
+
+  let is_locked = match moves with
+  | LOCK_MARK :: _ -> true
+  | _ -> false 
+  in
+
+
   let figure_score = function
   | None -> 0
-  | Some fig -> List.fold fig.members ~init:0 ~f:(fun accu (x,y) -> accu - y)
+  | Some fig -> 
+      let ax, ay, bx, by = figure_bounds fig in
+
+      (* the lower it fell, the better *)
+      (* let height_penalty = (by + 1) in *)
+      let height_penalty = ay in (* List.fold fig.members ~init:0 ~f:(fun accu (x,y) -> accu + y) in *)
+
+      let run_bonus = 
+        if is_locked then (
+          List.fold fig.members ~init:0 ~f:(fun accum pt -> accum + run_bonus pt)
+        ) else 0
+      in
+      let hole_penalty = 
+        if is_locked then (
+          List.fold fig.members ~init:0 ~f:(fun accum pt -> accum + hole_penalty pt fig.members);
+        ) else 0
+      in
+      - height_penalty + run_bonus - 3 * hole_penalty
+      (* List.fold fig.members ~init:0 ~f:(fun accu (x,y) -> accu - y) *)
   in
 
   (* List.fold moves ~init:0 ~f:(fun accum move -> accum + move_score move) + *)
@@ -486,10 +530,10 @@ let pick_best_move states =
     let old_pool = !pool in
     pool := [];
     (* printf "pool: %d\n%!" (List.length old_pool); *)
-    List.iter (take_some_states 50 old_pool) ~f:(fun (s, m) -> consider_moves s m (next_moves (List.hd_exn m)));
+    List.iter (take_some_states 100 old_pool) ~f:(fun (s, m) -> consider_moves s m (next_moves (List.hd_exn m)));
     if !pool <> [] then move_ya()
     else (
-      List.map (take_some_states 50 !final_pool) ~f:(fun (st, fig_moves) ->
+      List.map (take_some_states 100 !final_pool) ~f:(fun (st, fig_moves) ->
         let s = st |> freeze_figure in
         mut_drop_full_lines { s with moves = List.append s.moves (List.rev fig_moves) }
       )
