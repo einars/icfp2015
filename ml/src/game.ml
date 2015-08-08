@@ -632,7 +632,9 @@ let rec put_figure_on_board_and_go (sts:state_t list) : state_t =
 ;;
 
 let solve state =
-  eprintf "Solving seed %08x\n%!" state.initial_seed;
+  (*
+  eprintf "Solving seed %04x\n%!" state.initial_seed;
+  *)
   (* ignore(print_state state); *)
   put_figure_on_board_and_go [ state ]
 ;;
