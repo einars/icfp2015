@@ -19,12 +19,12 @@ let first_moves =
   [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW ; TURN_CCW ]
 
 let next_moves = function
-  | MOVE_E ->  [ MOVE_E ;          MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
-  | MOVE_W ->  [          MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
+  | MOVE_E ->  [ MOVE_E ;          MOVE_SE ; MOVE_SW ; TURN_CW             ]
+  | MOVE_W ->  [          MOVE_W ; MOVE_SE ; MOVE_SW ;            TURN_CCW ]
   | MOVE_SE -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
   | MOVE_SW -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
-  | TURN_CW -> [ MOVE_E ;          MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
-  | TURN_CCW-> [          MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
+  | TURN_CW -> [ MOVE_E ;          MOVE_SE ; MOVE_SW                       ]
+  | TURN_CCW-> [          MOVE_W ; MOVE_SE ; MOVE_SW                       ]
   | LOCK_MARK -> []
 
 let s_of_pt pt = sprintf "[%d:%d]" (fst pt) (snd pt)
@@ -360,10 +360,10 @@ let apply_move state (move:move_t) =
 
 
 let move_score = function
-  | MOVE_E -> 100
-  | MOVE_W -> 100
-  | MOVE_SW | MOVE_SE -> 200
-  | TURN_CW | TURN_CCW -> 1
+  | MOVE_E -> 0
+  | MOVE_W -> 0
+  | MOVE_SW | MOVE_SE -> 0
+  | TURN_CW | TURN_CCW -> 0
   | LOCK_MARK -> 0
 ;;
 
@@ -373,26 +373,26 @@ let state_full_lines state =
   Array.count state.field ~f:is_full_line
 ;;
 
+let state_has_full_lines st = state_full_lines st > 0
+
 
 let state_heuristic state moves =
 
   let figure_score = function
   | None -> 0
-  (* | Some fig -> List.fold fig.members ~init:0 ~f:(fun accu (x,y) -> accu - y - (if (y > 0 && state.field.(y - 1).(x)) then 0 else 10)) *)
   | Some fig -> List.fold fig.members ~init:0 ~f:(fun accu (x,y) -> accu - y)
   in
 
-  List.fold moves ~init:0 ~f:(fun accum move -> accum + move_score move)
-  + (500 * (state_full_lines state))
+  (* List.fold moves ~init:0 ~f:(fun accum move -> accum + move_score move) + *)
+  (500 * (state_full_lines state))
   + figure_score state.current_fig
 ;;
 
+
 let take_some_states n (l:'a list) =
 
-  (* printf "taking some states\n%!"; *)
-
   let heured = List.map l ~f:(fun (a,m) -> (state_heuristic a m), a, m) in
-  let sl = List.sort ~cmp:(fun (ha, a, m) (hb, b, mb) -> hb - ha) heured in
+  let sl = List.sort ~cmp:(fun (ha, a, m) (hb, b, mb) -> ha - hb) heured in
   List.map (List.take sl n) ~f:(fun (a,b,c) -> (b,c))
 ;;
 
