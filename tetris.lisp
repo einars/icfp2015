@@ -278,15 +278,26 @@
   #-windows-host(format-commit)
   #+windows-host"")
 
+(defun pretty-cmd (cmd)
+  (case cmd
+    (:W  "p")
+    (:E  "b")
+    (:SW "a")
+    (:SE "l")
+    (:R+ "d")
+    (:R- "k")))
+
 (defun print-solution (board)
-  (format nil "~A" (board-cmd board)))
+  (dolist (cmd (reverse (board-cmd board)))
+    (format t "~A" (pretty-cmd cmd))))
 
 (defun format-solution (id seed board)
   (format t "[ { \"problemId\": ~A~%" id)
   (format t "  , \"seed\": ~A~%" seed)
   (format t "  , \"tag\": \"~A\"~%" (get-tag))
-  (format t "  , \"solution\": \"~A\"~%" (print-solution board))
-  (format t "  }~%")
+  (format t "  , \"solution\": \"")
+  (print-solution board)
+  (format t "\"~%  }~%")
   (format t "]~%"))
 
 (defun read-problem (number)
