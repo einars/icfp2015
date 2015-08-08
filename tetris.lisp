@@ -43,6 +43,7 @@
     (1 "x")
     (2 "*")
     (4 ".")
+    (5 "X")
     (6 "@")))
 
 (defun print-raw-board (board)
