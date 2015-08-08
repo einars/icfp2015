@@ -4,7 +4,8 @@
 (defvar *outfile* "a.out")
 
 (defun main ()
-  (destructuring-bind (file num) sb-ext:*posix-argv*
+  (destructuring-bind (exe file num) sb-ext:*posix-argv*
+    (declare (ignore exe))
     (simulator:play file num)))
 
 (save-lisp-and-die *outfile* :executable t :toplevel 'main)
