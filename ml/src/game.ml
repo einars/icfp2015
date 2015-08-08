@@ -19,12 +19,18 @@ let first_moves =
   [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW ; TURN_CCW ]
 
 let next_moves = function
-  | MOVE_E ->  [ MOVE_E ;          MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
+  (* | MOVE_E ->  [ MOVE_E ;          MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
   | MOVE_W ->  [          MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
   | MOVE_SE -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
   | MOVE_SW -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
   | TURN_CW -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
-  | TURN_CCW-> [ MOVE_W ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
+  | TURN_CCW-> [ MOVE_W ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ] *)
+  | MOVE_E ->  [ MOVE_E ;          MOVE_SE ; MOVE_SW ; TURN_CW  ]
+  | MOVE_W ->  [          MOVE_W ; MOVE_SE ; MOVE_SW ;            TURN_CCW ]
+  | MOVE_SE -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
+  | MOVE_SW -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
+  | TURN_CW -> [ MOVE_E ;          MOVE_SE ; MOVE_SW ; TURN_CW  ;          ]
+  | TURN_CCW-> [          MOVE_W ; MOVE_SE ; MOVE_SW ;            TURN_CCW ]
   | LOCK_MARK -> []
 
 let s_of_pt pt = sprintf "[%d:%d]" (fst pt) (snd pt)
@@ -110,8 +116,8 @@ let s_of_moves moves =
     | MOVE_SE -> "m"
     | TURN_CW -> "q"
     | TURN_CCW -> "k"
+    (*| LOCK_MARK -> ""*)
     | LOCK_MARK -> ""
-    (* | LOCK_MARK -> "-" *)
   ) in
   String.concat mcs
 ;;
@@ -132,7 +138,8 @@ let print_state state =
     done;
     printf "\n";
   done;
-  printf "\n%s\n%!" (s_of_moves s.moves);
+  printf "\n%!";
+  (* printf "\n%s\n%!" (s_of_moves s.moves); *)
   state
 
 ;;
@@ -142,22 +149,22 @@ let print_state state =
 
 
 
-let json_cell json =
-  let open Yojson.Basic.Util in
+let json_cell json = Yojson.Basic.Util.(
   let x = json |> member "x" |> to_int
   and y = json |> member "y" |> to_int in
   x, y
+)
 
 
-let take_json_cell json field =
-  let open Yojson.Basic.Util in
+let take_json_cell json field = Yojson.Basic.Util.(
   json |> member field |> json_cell
+)
 
 
-let take_json_cells json field =
-  let open Yojson.Basic.Util in
+let take_json_cells json field = Yojson.Basic.Util.(
   let f = json |> member field |> to_list in
   List.map f ~f:json_cell
+)
 
 
 let make_field width height =
@@ -210,7 +217,7 @@ let initial_figure_offset state fig =
   (* returns... pivot? *)
   let xmin, ymin, xmax, ymax = figure_bounds fig in
   let width = xmax - xmin + 1 in
-  let xoffs = (state.width - width) / 2 in
+  let xoffs = (state.width - width) / 2 - xmin in
   let yoffs = - ymin in
   xoffs, yoffs
 ;;
@@ -401,11 +408,15 @@ let take_some_states n (l:'a list) =
 
 
 let state_hash state =
+
+  let compare_pts (ax,ay) (bx,by) = 
+    if ax = bx then by - ay else bx - ax
+  in
   
   ( match state.current_fig with
   | Some fig ->
     let h = ref [state.base_hash] in
-    List.iter fig.members ~f:(fun m -> h := (s_of_pt m) :: !h);
+    List.iter (List.sort ~cmp:compare_pts fig.members) ~f:(fun m -> h := (s_of_pt m) :: !h);
     String.concat !h
   | None -> state.base_hash
   );
@@ -421,10 +432,21 @@ let pick_best_move states =
   and final_pool = ref [] in
 
   let add_to_final_pool state moves =
+    (* let debug_m = s_of_moves (List.rev moves) in
+    if (debug_m = "bbqbmmb\\t") then ignore(print_state state); *)
     final_pool := (state, moves) :: !final_pool;
   in
 
   let add_to_pool state moves =
+
+    (*
+    let debug_m = s_of_moves (List.rev moves) in
+    if (debug_m = "b") then (
+      ignore(print_state state);
+      raise Impossible;
+    );
+    *)
+
     let hash = state_hash state in
     if not (Set.mem !seen hash) then (
       seen := Set.add !seen hash;
@@ -432,16 +454,15 @@ let pick_best_move states =
     )
   in
 
-  let rec consider_moves state moves_so_far moves =
+  let rec consider_moves state moves_so_far =
     let consider_move move =
       try 
         let next_state = apply_move state move in
         add_to_pool next_state (move :: moves_so_far)
       with
-        | Locked _ ->
-            add_to_final_pool state (LOCK_MARK :: move :: moves_so_far)
+        | Locked _ -> add_to_final_pool state (LOCK_MARK :: move :: moves_so_far)
     in
-    List.iter moves ~f:consider_move
+    List.iter ~f:consider_move
   in
 
   let rec move_ya () =
@@ -473,8 +494,7 @@ let make_figure json_fig =
 
 
   (* atdod masīvu ar steitiem, atbilstošu source_seediem *)
-let states_of_json json =
-  let open Yojson.Basic.Util in
+let states_of_json json = Yojson.Basic.Util.(
   let w = json |> member "width" |> to_int
   and h = json |> member "height" |> to_int
   and id = json |> member "id" |> to_int
@@ -500,12 +520,12 @@ let states_of_json json =
 
   List.map source_seeds ~f:(fun (seed) ->
     { base_state with 
-      seed = Yojson.Basic.Util.to_int seed;
-      initial_seed = Yojson.Basic.Util.to_int seed;
+      seed = to_int seed;
+      initial_seed = to_int seed;
     }
 
   )
-;;
+)
 
 
 let first_state_of_json something = states_of_json something |> List.hd_exn
@@ -529,7 +549,7 @@ let rec put_figure_on_board_and_go (sts:state_t list) : state_t =
     let good = ref [] in
     List.iter sts ~f:(fun s ->
       try good := (process_single_state s) :: !good;
-      with Locked l -> last_lock := Some l;
+      with Locked l -> last_lock := Some s;
     );
 
     if !good <> [] then (
@@ -539,9 +559,8 @@ let rec put_figure_on_board_and_go (sts:state_t list) : state_t =
       | None -> raise Impossible
       | Some state -> state
     )
-  ) with 
-  | Locked state -> state
-  | Finished state -> state
+  )
+  with Finished state -> state
 ;;
 
 let solve state =

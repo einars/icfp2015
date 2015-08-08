@@ -29,6 +29,10 @@ let run_test_suite () =
     ; pivot   = 0,0
   } in
 
+  let fig_XX_offpiv =
+    { members = [2,0; 3,0]
+    ; pivot   = 0,0
+  } in
 
   let fig_XXX =
     { members = [0,0; 1,0; 2,0]
@@ -43,6 +47,12 @@ let run_test_suite () =
   assert ( initial_figure_offset fd_4x4 fig_X = (1,0) );
   assert ( initial_figure_offset fd_5x5 fig_X = (2,0) );
   assert ( initial_figure_offset fd_4x4 fig_XX = (1,0) );
+
+  let xmin, ymin, xmax, ymax = figure_bounds fig_XX_offpiv in
+  let xo,yo =  initial_figure_offset fd_4x4 fig_XX_offpiv in
+  printf "bds: %d %d  / %d %d\n%!" xmin ymin xmax ymax;
+  printf "piv: %d %d\n%!" xo yo;
+  assert ( initial_figure_offset fd_4x4 fig_XX_offpiv = (-1,0) ); (* 2,0 -> 1,0 *)
 
   assert ( initial_figure_offset fd_5x5 fig_XX = (1,0) );
 
