@@ -9,12 +9,12 @@
 (defparameter *auto-play-delay* 0.2)
 
 ;;; Geometry
-(defparameter *bg-honeycomb-r* 24)
-(defparameter *grid-x-step* 24)
+(defparameter *bg-honeycomb-r* 16)
+(defparameter *grid-x-step* 16)
 (defparameter *grid-y-step* (round (* 0.866 *grid-x-step*)))
 
-(defparameter *placed-honeycomb-r* 22)
-(defparameter *pivot-r* 10)
+(defparameter *placed-honeycomb-r* 14)
+(defparameter *pivot-r* 5)
 
 ;;; Colors
 (defparameter *bg-honeycomb-color* "gray70")
@@ -190,13 +190,18 @@
     (apply #'replace-figure pivot (board-active-cells new-board)))
   (setf *move-history* nil))
 
-(defun run-gui (init-board update-fn)
+(defun run-gui (init-board update-fn)  
   (start-wish)
-  (let ((*last-figure* nil)
+  (let* ((*last-figure* nil)
 	(*canvas* nil)
 	(*filled-cells* (make-array (list *board-width* *board-height*) :initial-element nil))
 	(*move-history* nil)
-	(*auto-play-moves* 0))
+	(*auto-play-moves* 0)
+	(*bg-honeycomb-r* (min (floor 480 *board-height*) (floor 640 *board-width*)))
+	(*grid-x-step* *bg-honeycomb-r*)
+	(*grid-y-step* (round (* 0.866 *grid-x-step*)))
+	(*placed-honeycomb-r* (- *bg-honeycomb-r* 2))
+	(*pivot-r* (floor *placed-honeycomb-r* 2)))
     (let* ((board-scrolled-canvas (make-instance 'scrolled-canvas
 						 :width 800
 						 :height 800))
