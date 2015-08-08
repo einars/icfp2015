@@ -448,10 +448,10 @@ let pick_best_move states =
     let old_pool = !pool in
     pool := [];
     (* printf "pool: %d\n%!" (List.length old_pool); *)
-    List.iter (take_some_states 100 old_pool) ~f:(fun (s, m) -> consider_moves s m (next_moves (List.hd_exn m)));
+    List.iter (take_some_states 50 old_pool) ~f:(fun (s, m) -> consider_moves s m (next_moves (List.hd_exn m)));
     if !pool <> [] then move_ya()
     else (
-      List.map (take_some_states 100 !final_pool) ~f:(fun (st, fig_moves) ->
+      List.map (take_some_states 50 !final_pool) ~f:(fun (st, fig_moves) ->
         let s = st |> freeze_figure in
         mut_drop_full_lines { s with moves = List.append s.moves (List.rev fig_moves) }
       )
