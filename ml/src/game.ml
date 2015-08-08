@@ -19,12 +19,12 @@ let first_moves =
   [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW ; TURN_CCW ]
 
 let next_moves = function
-  | MOVE_E ->  [ MOVE_E ;          MOVE_SE ; MOVE_SW ; TURN_CW             ]
-  | MOVE_W ->  [          MOVE_W ; MOVE_SE ; MOVE_SW ;            TURN_CCW ]
+  | MOVE_E ->  [ MOVE_E ;          MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
+  | MOVE_W ->  [          MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
   | MOVE_SE -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
   | MOVE_SW -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
-  | TURN_CW -> [ MOVE_E ;          MOVE_SE ; MOVE_SW                       ]
-  | TURN_CCW-> [          MOVE_W ; MOVE_SE ; MOVE_SW                       ]
+  | TURN_CW -> [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
+  | TURN_CCW-> [ MOVE_W ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW  ; TURN_CCW ]
   | LOCK_MARK -> []
 
 let s_of_pt pt = sprintf "[%d:%d]" (fst pt) (snd pt)
@@ -53,6 +53,7 @@ type state_t =
 }
 
 exception Locked of state_t
+exception Finished of state_t
 exception Impossible
 
 let mut_drop_full_lines state =
@@ -391,9 +392,11 @@ let state_heuristic state moves =
 
 let take_some_states n (l:'a list) =
 
-  let heured = List.map l ~f:(fun (a,m) -> (state_heuristic a m), a, m) in
-  let sl = List.sort ~cmp:(fun (ha, a, m) (hb, b, mb) -> ha - hb) heured in
-  List.map (List.take sl n) ~f:(fun (a,b,c) -> (b,c))
+  if List.length l < n then l else (
+    let heured = List.map l ~f:(fun (a,m) -> (state_heuristic a m), a, m) in
+    let sl = List.sort ~cmp:(fun (ha, a, m) (hb, b, mb) -> ha - hb) heured in
+    List.map (List.take sl n) ~f:(fun (a,b,c) -> (b,c))
+  )
 ;;
 
 
@@ -411,7 +414,7 @@ let state_hash state =
 
 
 
-let pick_best_move state =
+let pick_best_move states =
 
   let seen = ref (Set.empty ~comparator:String.comparator) in
   let pool = ref []
@@ -444,20 +447,20 @@ let pick_best_move state =
   let rec move_ya () =
     let old_pool = !pool in
     pool := [];
+    (* printf "pool: %d\n%!" (List.length old_pool); *)
     List.iter (take_some_states 100 old_pool) ~f:(fun (s, m) -> consider_moves s m (next_moves (List.hd_exn m)));
     if !pool <> [] then move_ya()
-    else match (take_some_states 1 !final_pool) with
-    | [] -> None
-    | foo :: _ -> Some foo
-
-
+    else (
+      List.map (take_some_states 100 !final_pool) ~f:(fun (st, fig_moves) ->
+        let s = st |> freeze_figure in
+        mut_drop_full_lines { s with moves = List.append s.moves (List.rev fig_moves) }
+      )
+    )
   in
 
-  consider_moves state [] first_moves;
-  match move_ya () with
-  | Some (st, fig_moves) -> let s = st |> freeze_figure in
-  mut_drop_full_lines { s with moves = List.append s.moves (List.rev fig_moves) }
-  | None -> raise Impossible
+  List.iter states ~f:(fun st -> consider_moves st [] first_moves);
+
+  move_ya()
 ;;
 
 
@@ -507,26 +510,44 @@ let states_of_json json =
 
 let first_state_of_json something = states_of_json something |> List.hd_exn
 
-let rec put_figure_on_board_and_go st =
-  let st = with_base_hash st in
-  if st.remaining = 0 then raise (Locked st);
-  let n, next_seed = next_random st.seed in
-  let n_fig = (n mod (List.length st.figures)) in
-  let fig = List.nth_exn st.figures n_fig in
+let rec put_figure_on_board_and_go (sts:state_t list) : state_t =
+  let process_single_state st =
+    let st = with_base_hash st in
+    if st.remaining = 0 then raise (Finished st);
+    let n, next_seed = next_random st.seed in
+    let n_fig = (n mod (List.length st.figures)) in
+    let fig = List.nth_exn st.figures n_fig in
 
-  let st = { st with
-    seed = next_seed;
-    remaining = st.remaining - 1
-  } in
-  try
-    initially_place_figure st fig |> pick_best_move |> put_figure_on_board_and_go
-  with Locked state -> state
+    initially_place_figure { st with
+      seed = next_seed;
+      remaining = st.remaining - 1
+    } fig
+  in
+  try (
+
+    let last_lock = ref None in
+    let good = ref [] in
+    List.iter sts ~f:(fun s ->
+      try good := (process_single_state s) :: !good;
+      with Locked l -> last_lock := Some l;
+    );
+
+    if !good <> [] then (
+      !good |> pick_best_move |> put_figure_on_board_and_go;
+    ) else (
+      match !last_lock with
+      | None -> raise Impossible
+      | Some state -> state
+    )
+  ) with 
+  | Locked state -> state
+  | Finished state -> state
 ;;
 
 let solve state =
   eprintf "Solving seed %08x\n%!" state.initial_seed;
   (* ignore(print_state state); *)
-  put_figure_on_board_and_go state
+  put_figure_on_board_and_go [ state ]
 ;;
 
 
