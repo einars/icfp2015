@@ -8,7 +8,7 @@ open Movement
 
 let s_of_pt pt = sprintf "[%d:%d]" (fst pt) (snd pt)
 
-let first_moves = [ MOVE_E ; MOVE_W ; MOVE_SE ; MOVE_SW ; TURN_CW ; TURN_CCW ]
+let first_moves = [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW; MOVE_E ; MOVE_W ; TURN_CW ; TURN_CCW ]
 
 let s_of_moves moves = 
   let mcs = List.rev_map moves ~f:(function 
@@ -98,21 +98,21 @@ let next_random seed =
 
 let pt_solid print_mode state (x,y) =
 
-  let rec touch_rec x y = function 
+  let rec touch_rec drops x y = function 
   | [] -> if x < 0 || x >= state.width || y >= state.height then true else 
-    if y < 0 then false else state.field.(y).(x)
-  | (Finish _)                 :: rest -> touch_rec x y rest
+    if y < 0 then y < -drops else state.field.(y).(x)
+  | (Finish _)                 :: rest -> touch_rec drops x y rest
   (* | (LivePlacement _)          :: rest -> touch_rec x y rest *)
   | (LivePlacement (fig, _))          :: rest -> 
       if print_mode && (List.mem fig.members (x,y)) then true
-      else touch_rec x y rest
-  | (ColumnDrop col)           :: rest -> touch_rec x (if y <= col then y - 1 else y) rest
+      else touch_rec drops x y rest
+  | (ColumnDrop col)           :: rest -> touch_rec (drops + 1) x (if y <= col then y - 1 else y) rest
   | (LockedPlacement (fig, _)) :: rest ->
       if List.mem fig.members (x,y) then true
-      else touch_rec x y rest
+      else touch_rec drops x y rest
   in
 
-  touch_rec x y state.diff
+  touch_rec 0 x y state.diff
 ;;
 
 
@@ -136,7 +136,7 @@ let print_state state =
 
   let dbg_print_diff = function 
     | Finish _ -> printf "FIN!"
-    | LockedPlacement (fig, m) -> printf "O%s " (s_of_moves_dbg m)
+    | LockedPlacement (fig, m) -> printf "%s " (s_of_moves_dbg m)
     | LivePlacement (fig, m) -> printf "*%s " (s_of_moves_dbg m)
     | ColumnDrop col -> printf "(drop %d) " col
   in

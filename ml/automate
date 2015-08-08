@@ -2,6 +2,6 @@
 
 for i in $(seq 1 23); do
   echo "Solving $i"
-  ./tetris  -f ../problems/problem_$i.json --tag $(git rev-parse --short HEAD) -s >p.json
+  ./play_icfp2015  -f ../problems/problem_$i.json --tag $(git rev-parse --short HEAD) >p.json
   ./push-solution p.json
 done
