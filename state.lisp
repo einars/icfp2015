@@ -4,10 +4,11 @@
   (:export :*board-width* :*board-height* :*total-moves* :last-move
 	   :board :board-grid :board-pivot :board-active-cells :board-pieces
 	   :make-pos :pos-x :pos-y :pos-add :pos-sub :adjust-pos :copy-pos
-	   :make-piece :copy-piece :piece-pivot :piece-offset
+	   :make-piece :copy-piece :piece-pivot :piece-offset :active-cells
 	   :piece-turn :piece-number :piece-config
 	   :empty-grid :empty-board :copy-board
-	   :board-update :board-update-board :board-update-msg :continue-processing))
+	   :board-update :board-update-board :board-update-msg
+	   :continue-processing))
 
 (in-package :icfp/state)
 
@@ -51,10 +52,12 @@
   (let ((last (last-move board)))
     (adjust-pos (piece-pivot last) (piece-offset last))))
 
+(defun active-cells (piece)
+  (mapcar (lambda (x) (adjust-pos x (piece-offset piece)))
+	  (aref (piece-config piece) (piece-turn piece))))
+
 (defun board-active-cells (board)
-  (let ((last (last-move board)))
-    (mapcar (lambda (piece) (adjust-pos piece (piece-offset last)))
-	    (aref (piece-config last) (piece-turn last)))))
+  (active-cells (last-move board)))
 
 (defun empty-grid ()
   (make-array (list *board-width* *board-height*)))

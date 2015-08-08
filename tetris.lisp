@@ -111,6 +111,19 @@
   (push (get-new-piece board) (board-pieces board))
   board)
 
+(defun same-piece (a b)
+  (= (piece-number a) (piece-number b)))
+
+(defun test-moves (head tail)
+  (cond
+    ((or (null tail) (not (same-piece head (first tail)))) nil)
+    ((equalp (active-cells head) (active-cells (first tail))) t)
+    (t (test-moves head (rest tail)))))
+
+(defun is-bad-move (board)
+  (let ((pieces (board-pieces board)))
+    (test-moves (first pieces) (rest pieces))))
+
 (defun make-move (board move)
   (let* ((new-board (copy-board board))
 	 (next (copy-piece (last-move board))))
@@ -123,14 +136,17 @@
       (SE (adjust-piece-offset next  1 1 #'evenp))
       (R+ (adjust-piece-turn next  1))
       (R- (adjust-piece-turn next -1)))
-    (if (is-locking new-board)
-	(lock-down new-board)
-	new-board)))
+    (cond ((is-locking new-board) (lock-down new-board))
+	  ((is-bad-move new-board) nil)
+	  (t new-board))))
+
+(defun get-next-board (board)
+  (or (make-move board (random-elt '(E W)))
+      (get-next-board board)))
 
 (defun get-solution (board)
   (update-gui board)
-  (get-solution (make-move board (random-elt '(SE SW)))))
-;  (get-solution (make-move board (random-elt '(W E SW SE R+ R-)))))
+  (get-solution (get-next-board board)))
 
 (defun git-commit-cmd ()
   "git log -n1 --format=oneline --abbrev-commit --format=\"format:%h\"")
