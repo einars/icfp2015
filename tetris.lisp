@@ -14,7 +14,7 @@
 (defvar *break* nil)
 (defvar *best* nil)
 
-(defconstant +pool-size+ 10)
+(defparameter *pool-size* 10)
 
 (defun update-gui (board)
   (funcall *break* board))
@@ -107,15 +107,14 @@
   (is-outside board (board-active-cells board)))
 
 (defun fetch-next-unit (number)
-  (if (< number *total-moves*)
-      (copy-piece (aref *units* (aref *move-sequence* number)))
-      (make-piece)))
+  (copy-piece (aref *units* (aref *move-sequence* number))))
 
 (defun get-new-piece (board)
-  (let* ((number (1+ (piece-number (last-move board))))
-	 (next (fetch-next-unit number)))
-    (setf (piece-number next) number)
-    next))
+  (let ((number (1+ (piece-number (last-move board)))))
+    (when (< number *total-moves*)
+      (let ((next (fetch-next-unit number)))
+	(setf (piece-number next) number)
+	next))))
 
 (defun is-row-full (row board &optional (i 0))
   (cond ((= i *board-width*) t)
@@ -149,7 +148,12 @@
 (defun lock-down (board)
   (pop (board-pieces board))
   (lock-piece-and-update-score board)
-  (push (get-new-piece board) (board-pieces board))
+  (let ((new-piece (get-new-piece board)))
+    (cond ((null new-piece) (setf (board-done board) t))
+	  (t (push new-piece (board-pieces board))
+	     (when (is-locking board)
+	       (pop (board-pieces board))
+	       (setf (board-done board) t)))))
   board)
 
 (defun same-piece (a b)
@@ -182,15 +186,13 @@
 	  ((is-bad-move new-board) nil)
 	  (t new-board))))
 
-(defun is-finished (board)
-  (= *total-moves* (piece-number (first (board-pieces board)))))
-
 (defun goodness (board)
    ;; ***** TODO ******
-  (length (board-pieces board)))
+  (+ (length (board-pieces board))
+     (if (board-done board) 1 0)))
 
 (defun try-move (board)
-  (when (not (is-finished board))
+  (when (not (board-done board))
     (make-move board (random-elt '(:W :E :SW :SE :R+ :R-)))))
 
 (defun best-goodness (index)
@@ -198,7 +200,7 @@
 
 (defun find-candidate (fn)
   (let ((candidate 0))
-    (dotimes (index +pool-size+ candidate)
+    (dotimes (index *pool-size* candidate)
       (when (funcall fn (best-goodness index) (best-goodness candidate))
 	(setf candidate index)))))
 
@@ -211,16 +213,16 @@
 (defun update (victim)
   (let* ((old-board (aref *best* victim))
 	 (new-board (try-move old-board)))
-    (when (and new-board (>= (goodness new-board) (goodness old-board)))
+    (when (and new-board (> (goodness new-board) (goodness old-board)))
       (setf (aref *best* (find-worst-index)) new-board))
     (update-gui old-board)
     (find-solution)))
 
 (defun find-victim ()
-  (let ((offset (random +pool-size+)))
-    (dotimes (i +pool-size+ nil)
-      (let ((victim (mod (+ i offset) +pool-size+)))
-	(when (not (is-finished (aref *best* victim)))
+  (let ((offset (random *pool-size*)))
+    (dotimes (i *pool-size* nil)
+      (let ((victim (mod (+ i offset) *pool-size*)))
+	(when (not (board-done (aref *best* victim)))
 	  (return-from find-victim victim))))))
 
 (defun find-solution ()
@@ -230,7 +232,7 @@
 	(update victim))))
 
 (defun get-solution (board)
-  (let ((*best* (make-array +pool-size+ :initial-element board)))
+  (let ((*best* (make-array *pool-size* :initial-element board)))
     (find-solution)))
 
 (defun git-commit-cmd ()
