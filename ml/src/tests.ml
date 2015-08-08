@@ -1,6 +1,8 @@
 (* vim: set ts=2 tw=0 foldmethod=marker : *)
 
 open Printf
+open Gametypes
+open Movement
 open Game
 
 open Core.Std
@@ -39,6 +41,15 @@ let run_test_suite () =
     ; pivot   = 0,0
   } in
 
+  let fd_4x4t = { fd_4x4 with diff = [
+    (LockedPlacement ({ pivot = 0,0; members = [(0,0); (1,1)] }, []))
+    ] } in
+
+
+  assert ( true  = pt_solid false fd_4x4t (0,0) );
+  assert ( false = pt_solid false fd_4x4t (0,1) );
+  assert ( true  = pt_solid false fd_4x4t (1,1) );
+  assert ( false = pt_solid false fd_4x4t (1,0) );
 
   assert ( figure_bounds fig_X = (0,0,0,0) );
   assert ( figure_bounds fig_XX = (0,0,1,0) );

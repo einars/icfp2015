@@ -1,34 +1,5 @@
 open Yojson
-
-type field_t = bool array array
-
-type cell_t = int * int
-
-type figure_t =
-  { members: cell_t list
-  ; pivot: cell_t
-  }
-
-type move_t = MOVE_E | MOVE_W | MOVE_SE | MOVE_SW | TURN_CW | TURN_CCW | LOCK_MARK
-
-type state_t =
-  { id: int
-  ; figures: figure_t list
-  ; width: int
-  ; height: int
-  ; field: field_t
-  ; initial_seed: int
-  ; seed: int
-  ; remaining: int (* inv sourceLength *)
-  ; current_fig: figure_t option
-  ; current_fig_offs: int*int
-  ; moves: move_t list
-  ; base_hash: string
-  ; score: int
-  ; score_adj: int
-  ; ls_old: int
-}
-
+open Gametypes
 
 val figure_bounds: figure_t -> int*int*int*int
 val initial_figure_offset: state_t -> figure_t -> int * int
@@ -40,9 +11,6 @@ val print_state: state_t -> state_t
 val first_state_of_json: Basic.json -> state_t
 val states_of_json: Basic.json -> state_t list
 
-val turn_cw: int*int -> int*int -> int*int
-val turn_ccw: int*int -> int*int -> int*int
-val move_sw: int*int -> int*int
-val move_se: int*int -> int*int
-
 val s_of_moves: move_t list -> string
+
+val pt_solid : bool -> state_t -> int * int -> bool

@@ -3,6 +3,7 @@
 open Printf
 open Core.Std
 
+open Gametypes
 open Game
 open Tests
 
@@ -37,7 +38,7 @@ let run_prog filenames opt_tag first is_debug _ _ _ _ () =
 ,"tag": "%s"
 ,"solution": "%s"
 }
-|json} state.id state.initial_seed (Option.value opt_tag ~default:"OCAML.DEV") (s_of_moves state.moves)
+|json} state.id state.initial_seed (Option.value opt_tag ~default:"OCAML.DEV") ("FIXME")
     )) |> printf "[%s]";
   )
 

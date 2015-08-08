@@ -1,5 +1,5 @@
 THREADS = ye
-FILES  = src/game.ml src/tests.ml src/main.ml
+FILES  = src/gametypes.ml src/movement.ml src/game.ml src/tests.ml src/main.ml
 PACKS = core yojson
 
 SOURCES = ${FILES}
