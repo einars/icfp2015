@@ -228,8 +228,9 @@
     (let ((r-pattern patterns))
       (dotimes (i 5)
 	(setf r-pattern (copy-list r-pattern))
-	(let ((rotated (mapcar (lambda (x) (push :R+ x)) r-pattern)))
-	  (setf patterns (append rotated patterns)))))
+	(setf r-pattern (mapcar (lambda (x) (push :R+ x)) r-pattern))
+	(setf patterns (append r-pattern patterns))))
+    (format t "~A~%" patterns)
     patterns))
 
 (defun try-all-moves (board)
