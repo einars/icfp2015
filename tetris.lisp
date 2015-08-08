@@ -57,12 +57,17 @@
       (format t "~A " (pretty-cell (aref (board-grid board) x y))))
     (format t "~%")))
 
+(defun cell-on-board (cell)
+  (and (<= 0 (car cell) (1- *board-width*))
+       (<= 0 (cdr cell) (1- *board-height*))))
+
 (defun print-board (vanilla-board)
   (let* ((board (clone-board vanilla-board))
 	 (pivot (board-pivot vanilla-board)))
     (dolist (i (board-active-cells vanilla-board))
       (setf (aref (board-grid board) (car i) (cdr i)) 2))
-    (incf (aref (board-grid board) (car pivot) (cdr pivot)) 4)
+    (when (cell-on-board pivot)
+      (incf (aref (board-grid board) (car pivot) (cdr pivot)) 4))
     (print-raw-board board)))
 
 (defun copy-grid (board)
@@ -90,8 +95,7 @@
   (setf (piece-turn piece) (mod (+ (piece-turn piece) turn) 6)))
 
 (defun good-cell (board cell)
-  (and (<= 0 (car cell) (1- *board-width*))
-       (<= 0 (cdr cell) (1- *board-height*))
+  (and (cell-on-board cell)
        (= 0 (aref (board-grid board) (car cell) (cdr cell)))))
 
 (defun is-outside (board cells)
