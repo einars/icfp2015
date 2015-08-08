@@ -6,7 +6,7 @@
 (in-package :icfp/gui)
 
 ;;; Timing
-(defparameter *auto-play-delay* 0.2)
+(defparameter *auto-play-delay* 0.05)
 
 ;;; Geometry
 (defparameter *bg-honeycomb-r* 16)
@@ -197,7 +197,7 @@
 	(*filled-cells* (make-array (list *board-width* *board-height*) :initial-element nil))
 	(*move-history* nil)
 	(*auto-play-moves* 0)
-	(*bg-honeycomb-r* (min (floor 480 *board-height*) (floor 640 *board-width*)))
+	(*bg-honeycomb-r* (min (floor 400 *board-height*) (floor 640 *board-width*)))
 	(*grid-x-step* *bg-honeycomb-r*)
 	(*grid-y-step* (round (* 0.866 *grid-x-step*)))
 	(*placed-honeycomb-r* (- *bg-honeycomb-r* 2))
@@ -228,6 +228,12 @@
 				      :text " Step x50 "
 				      :command (lambda ()
 						 (setf *auto-play-moves* 50)
+						 (invoke-restart 'continue-processing))))
+	   (btn-step-inf (make-instance 'button 
+				      :master top-bar
+				      :text "   Play!  "
+				      :command (lambda ()
+						 (setf *auto-play-moves* -1)
 						 (invoke-restart 'continue-processing))))
 	   (btn-undo (make-instance 'button 
 				    :master button-bar
@@ -271,6 +277,7 @@
       (pack btn-step :side :left)
       (pack btn-step10 :side :left)
       (pack btn-step50 :side :left)
+      (pack btn-step-inf :side :left)
       (pack debug-text :side :left)
       (pack board-scrolled-canvas :expand 1 :fill :both)
       (scrollregion *canvas* 0 0 3000 3000)
