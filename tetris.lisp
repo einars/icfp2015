@@ -318,19 +318,20 @@
     (:R+ "d")
     (:R- "k")))
 
-(defun print-solution (s board)
+(defvar *out* *standard-output*)
+
+(defun print-solution (board)
   (dolist (cmd (reverse (board-cmd board)))
-    (format s "~A" (pretty-cmd cmd))))
+    (format *out* "~A" (pretty-cmd cmd))))
 
 (defun format-solution (id seed board)
-  (with-open-file  (s "test.json" :direction :output :if-exists :supersede)
-    (format s "[ { \"problemId\": ~A~%" id)
-    (format s "  , \"seed\": ~A~%" seed)
-    (format s "  , \"tag\": \"~A\"~%" (get-tag))
-    (format s "  , \"solution\": \"")
-    (print-solution s board)
-    (format s "\"~%  }~%")
-    (format s "]~%")))
+  (format *out* "[ { \"problemId\": ~A~%" id)
+  (format *out* "  , \"seed\": ~A~%" seed)
+  (format *out* "  , \"tag\": \"~A\"~%" (get-tag))
+  (format *out* "  , \"solution\": \"")
+  (print-solution board)
+  (format *out* "\"~%  }~%")
+  (format *out* "]~%"))
 
 (defun read-problem (number)
   (with-open-file (problem (format nil "problems/problem_~A.json" number))
@@ -439,3 +440,7 @@
 	(let ((*move-sequence* (generate-move-sequence)))
 	  (init-board-pieces new-board (aref *move-sequence* 0))
 	  (funcall solver id source-seed new-board with-gui))))))
+
+(defun save-problem (number &key with-gui (solver #'default-solver))
+  (with-open-file  (*out* "test.json" :direction :output :if-exists :supersede)
+    (solve-problem number :with-gui with-gui :solver solver)))
