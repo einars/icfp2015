@@ -288,8 +288,8 @@
   (when pool
     (mapc #'count-holes pool)
     (first (sift pool (list (cons #'> #'board-lines)
-			    (cons #'> #'hole-count)
-			    (cons #'> #'get-board-height))))))
+			    (cons #'> #'get-board-height)
+			    (cons #'> #'hole-count))))))
 
 (defun get-solution (board)
   (dotimes (*rank* *total-moves* board)
