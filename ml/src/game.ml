@@ -426,9 +426,30 @@ let state_heuristic state =
 
 
   let totes = ref 0 in
+  (*
+
+  let max_interesting_row = ref (state.height - 1) in
+  for y = state.height - 1 downto 0 do
+    let tot = ref 0 in
+    for x = 0 to state.width - 1 do
+      if pt_solid_live state (x,y) then tot := !tot + 1;
+    done;
+    if (!tot = state.width) then (
+      totes := !totes + 1000;
+      max_interesting_row := y - 1;
+    )
+  done;
+
+  totes := !totes + 1000 * List.count state.diff ~f:(function
+    | ColumnDrop _ -> true
+    | _ -> false
+  );
+
+
+
 
   let out_of_bounds (x,y) =
-    x < 0 || y < 0 || x >= state.width || y >= state.height
+    x < 0 || y < 0 || x >= state.width || y >= !max_interesting_row
   in
 
   let strapon pt =
@@ -446,28 +467,48 @@ let state_heuristic state =
   for x = 0 to state.width - 1 do
     penalty := !penalty + strapon (x,0)
   done;
-  for y = 0 to state.height - 1 do
+  for y = 0 to !max_interesting_row do
     penalty := !penalty + strapon (0,y)
   done;
 
   totes := !totes - !penalty;
 
-  (*
-  for y = 0 to state.height - 1 do
-    for x = 0 to state.width - 1 do
-      if pt_solid_live state (x,y) then totes := !totes + 1 + y
-    done;
-  done;
+
   *)
+  let solid = pt_solid_live state
+  and free = (fun pt -> not (pt_solid_live state pt)) in
 
-  totes := !totes + 1000 * List.count state.diff ~f:(function
-    | ColumnDrop _ -> true
-    | _ -> false
-  );
 
+  let max_y = ref (0) in
   List.iter moved_pos  ~f:(
-    fun (x,y) -> totes := !totes + y
+    fun (x,y) ->
+      let pt = x,y in
+
+      let sw = move_sw pt and se = move_se pt in
+      let swsw = move_sw sw and sese = move_se se in
+
+      (*
+      if y > !max_y then max_y := y;
+      *)
+      totes := !totes + y;
+      if (free ((x - 1),y)) && solid ((x - 2),y) then totes := !totes - 1;
+      if (free ((x + 1),y)) && solid ((x + 2),y) then totes := !totes - 1;
+
+      if (free sw) && (solid (move_e sw)) && (solid (move_w sw)) then totes := !totes - 2;
+      if (free se) && (solid (move_e se)) && (solid (move_w se)) then totes := !totes - 2;
+
+      if (free sw) && (free se) then totes := !totes - 2;
+
+      if (free sw) && (free swsw) && (solid (move_e sw)) && (solid (move_w sw))
+      &&                             (solid (move_e swsw)) && (solid (move_w swsw))
+      then totes := !totes - 4;
+
+      if (free se) && (free sese) && (solid (move_e se)) && (solid (move_w se))
+      &&                             (solid (move_e sese)) && (solid (move_w sese))
+      then totes := !totes - 4;
+
   );
+  totes := !totes + !max_y;
 
 
   (*
@@ -589,7 +630,9 @@ let rec put_figure_on_board_and_go depth power_words (states:state_t list) : sta
   (match List.hd next_states with
   | None -> failwith "ok"
   | Some s ->
-      eprintf "\r%3d%% %d / %d%!" (depth * 100 / s.sourcelength) depth s.sourcelength;
+      if depth <> 100 
+      then eprintf "\r%3d%% %d / %d%!" (depth * 100 / s.sourcelength) depth s.sourcelength
+      else eprintf "\r%3d%%" depth;
 
       (* print_state s; *)
       if not (is_terminal_state s) then
