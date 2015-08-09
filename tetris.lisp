@@ -135,6 +135,7 @@
 	(t (is-row-full row board (1+ i)))))
 
 (defun delete-row (row board)
+  (incf (board-lines board))
   (let ((grid (board-grid board)))
     (dotimes (x row)
       (dotimes (i *board-width*)

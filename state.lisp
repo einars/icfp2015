@@ -6,7 +6,7 @@
 	   :make-pos :pos-x :pos-y :pos-add :pos-sub :adjust-pos :copy-pos
 	   :make-piece :copy-piece :piece-pivot :piece-offset :active-cells
 	   :score-size :score-lines :score-history :make-score :board-done
-	   :piece-turn :piece-number :piece-config :board-log
+	   :piece-turn :piece-number :piece-config :board-log :board-lines
 	   :empty-grid :empty-board :copy-board :board-cmd :board-stats
 	   :board-update :board-update-board :board-update-msg
 	   :continue-processing
@@ -40,7 +40,7 @@
 
 (defstruct score (size 0) (lines 0) history)
 
-(defstruct board grid pieces log cmd done (stats '(0 0)))
+(defstruct board grid pieces log cmd done (lines 0) (stats '(0 0)))
 
 (defun last-move (board)
   (first (board-pieces board)))
