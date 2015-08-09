@@ -259,24 +259,24 @@
 (defun hole-count (board)
   (second (board-stats board)))
 
-(defun remove-with-bad-holes (all count)
-  (remove-if-not (lambda (x) (= (hole-count x) count)) all))
+(defun leave-best (pool predicate key)
+  (let* ((sorted-by (sort pool predicate :key key))
+	 (best-result (funcall key (first sorted-by))))
+    (remove-if-not (lambda (x) (= (funcall key x) best-result)) sorted-by)))
 
 (defun best-of (pool)
   (when pool
     (mapc #'count-holes pool)
-    (let* ((by-hole-count (sort pool #'< :key #'hole-count))
-	   (best-count (hole-count (first by-hole-count)))
-	   (least-holes (remove-with-bad-holes by-hole-count best-count)))
-      (first (sort least-holes #'> :key #'get-board-height)))))
+    (let ((best-holes (leave-best pool #'< #'hole-count)))
+      (first (leave-best best-holes #'> #'get-board-height)))))
 
 (defun get-solution (board)
   (dotimes (*rank* *total-moves* board)
-    (let ((all-moves (try-all-moves board)))
-      (let ((best-move (best-of all-moves)))
-	(if best-move
-	    (setf board best-move)
-	    (return-from get-solution board))))))
+    (let* ((all-moves (try-all-moves board))
+	   (best-move (best-of all-moves)))
+      (if best-move
+	  (setf board best-move)
+	  (return-from get-solution board)))))
 
 (defun git-commit-cmd ()
   "git log -n1 --format=oneline --abbrev-commit --format=\"format:%h\"")
