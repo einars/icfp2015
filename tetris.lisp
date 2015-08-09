@@ -246,13 +246,17 @@
 (defun NE-cell (x y)
   (cons (+ x (mod y 2)) (- y 1)))
 
+(defun real-cell (board cell)
+  (or (not (cell-on-board cell))
+      (free-cell board cell)))
+
 (defun count-holes (board)
   (let ((count 0))
     (dotimes (x *board-width*)
       (dotimes (y *board-height*)
 	(unless (and (free-cell board (cons x y))
-		     (good-cell board (NW-cell x y))
-		     (good-cell board (NE-cell x y)))
+		     (real-cell board (NW-cell x y))
+		     (real-cell board (NE-cell x y)))
 	  (incf count))))
     (setf (second (board-stats board)) count)))
 
