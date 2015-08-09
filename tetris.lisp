@@ -254,9 +254,9 @@
   (let ((count 0))
     (dotimes (x *board-width*)
       (dotimes (y *board-height*)
-	(unless (and (free-cell board (cons x y))
-		     (real-cell board (NW-cell x y))
-		     (real-cell board (NE-cell x y)))
+	(when (and (free-cell board (cons x y))
+		   (or (not (real-cell board (NW-cell x y)))
+		       (not (real-cell board (NE-cell x y)))))
 	  (incf count))))
     (setf (second (board-stats board)) count)))
 
