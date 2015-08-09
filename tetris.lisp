@@ -219,7 +219,7 @@
 
 (defun try-turn (board cmds turns)
   (let ((try (try-move board :R+)))
-    (if (and try (= (board-rank try) *rank*))
+    (if (and try (not (board-done try)) (= (board-rank try) *rank*))
 	(try-cmds try cmds (1- turns))
 	(advance-try board cmds turns))))
 
