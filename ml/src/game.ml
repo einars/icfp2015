@@ -10,8 +10,8 @@ let s_of_pt pt = sprintf "[%d:%d]" (fst pt) (snd pt)
 
 let first_moves = [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW; MOVE_E ; MOVE_W ; TURN_CW ; TURN_CCW ]
 
-let s_of_moves moves = 
-  let mcs = List.rev_map moves ~f:(function 
+let s_of_moves moves =
+  let mcs = List.rev_map moves ~f:(function
     | MOVE_W -> "p"
     | MOVE_E -> "b"
     | MOVE_SW -> "a"
@@ -24,8 +24,8 @@ let s_of_moves moves =
   String.concat mcs
 ;;
 
-let s_of_moves_dbg moves = 
-  let mcs = List.rev_map moves ~f:(function 
+let s_of_moves_dbg moves =
+  let mcs = List.rev_map moves ~f:(function
     | MOVE_W -> "<"
     | MOVE_E -> ">"
     | MOVE_SW -> "/"
@@ -46,7 +46,7 @@ let figure_hash fig =
   List.iter items ~f:(fun pt -> out := (s_of_pt pt) :: !out );
   String.concat !out
 ;;
-  
+
 
 let figure_bounds fig =
 
@@ -96,30 +96,27 @@ let next_random seed =
 ;;
 
 
-let pt_solid print_mode state (x,y) =
 
-  let rec touch_rec drops x y = function 
-  | [] -> if x < 0 || x >= state.width || y >= state.height then true else 
-    if y < 0 then y < -drops else state.field.(y).(x)
-  | (Finish _)                 :: rest -> touch_rec drops x y rest
-  (* | (LivePlacement _)          :: rest -> touch_rec x y rest *)
-  | (LivePlacement (fig, _))          :: rest -> 
-      if print_mode && (List.mem fig.members (x,y)) then true
-      else touch_rec drops x y rest
-  | (ColumnDrop col)           :: rest -> touch_rec (drops + 1) x (if y <= col then y - 1 else y) rest
-  | (LockedPlacement (fig, _)) :: rest ->
-      if List.mem fig.members (x,y) then true
-      else touch_rec drops x y rest
+let pt_solid check_live state (x,y) =
+
+  let check_live_block () =
+    if not check_live then false
+    else match state.diff with
+    | LivePlacement (fig, _) :: _ -> List.mem fig.members (x,y)
+    | _ -> false
   in
 
-  touch_rec 0 x y state.diff
+  if x < 0 || x >= state.width || y < 0 || y >= state.height
+  then true
+  else (check_live_block ()  || state.repr.(y * state.width + x))
+
 ;;
 
 
-let get_solution state = 
+let get_solution state =
   let out = ref [] in
 
-  let append_diff = function 
+  let append_diff = function
     | Finish _ -> ()
     | LockedPlacement (_, m) ->
         out := "" :: (s_of_moves m) :: !out
@@ -132,16 +129,17 @@ let get_solution state =
   String.concat (List.rev !out)
 ;;
 
+
 let print_state state =
 
-  let dbg_print_diff = function 
-    | Finish _ -> printf "FIN!"
+  let dbg_print_diff = function
+    | Finish _ -> printf "EOF\n"
     | LockedPlacement (fig, m) -> printf "%s " (s_of_moves_dbg m)
     | LivePlacement (fig, m) -> printf "*%s " (s_of_moves_dbg m)
     | ColumnDrop col -> printf "(drop %d) " col
   in
 
-  let normal_print_diff = function 
+  let normal_print_diff = function
     | Finish _ -> ()
     | LockedPlacement (fig, m) -> printf "%s" (s_of_moves m)
     | LivePlacement (fig, m) -> printf "%s" (s_of_moves m)
@@ -155,7 +153,7 @@ let print_state state =
     if (y % 2 = 1) then printf " ";
     for x = 0 to state.width - 1 do
 
-      printf "%s" (if pt_solid true state (x,y) then "XX" else "··");
+      printf "%s" (if pt_solid true state (x,y) then "O " else "· ");
 
     done;
     printf "\n";
@@ -165,13 +163,13 @@ let print_state state =
   List.iter ~f:print_diff (List.rev state.diff);
   (* printf "\n%s\n%!" (s_of_moves s.moves); *)
   state
-
 ;;
 
 
-let fig_touches_something state pts = 
+let fig_touches_something state pts =
   List.exists pts ~f:(pt_solid false state)
 ;;
+
 
 let pick_new_or_finalize state =
   if state.remaining = 0 then
@@ -193,20 +191,39 @@ let pick_new_or_finalize state =
 
 
 
-
-
-
 let maybe_drop state =
-  (* highly ineffective *)
+
+  (* apply last locked figure *)
+  let new_repr = Array.copy state.repr in
+  begin match state.diff with
+  | LockedPlacement (fig, _) :: _ -> List.iter fig.members ~f:(fun (x,y) -> new_repr.(y * state.width + x) <- true)
+  | _ -> failwith "maybe_drop: unexpected last element"
+  end;
+
+  let tmp_state = { state with repr = new_repr } in
   let new_diff = ref state.diff in
-  for y = 0 to state.height - 1 do 
+
+  for y = 0 to state.height - 1 do
     let drop = ref true in
     for x = 0 to state.width - 1 do
-      if not (pt_solid false state (x,y)) then drop := false
+      if not (pt_solid false tmp_state (x,y)) then drop := false
     done;
-    if !drop then new_diff := (ColumnDrop y) :: !new_diff;
+    if !drop then begin
+      new_diff := (ColumnDrop y) :: !new_diff;
+      (* update actual drop *)
+      for yy = y downto 1 do
+        for x = 0 to state.width - 1 do
+          new_repr.(yy * state.width + x) <- new_repr.((yy - 1) * state.width + x);
+        done;
+      done;
+      for x = 0 to state.width - 1 do
+        new_repr.(x) <- false;
+      done;
+    end
   done;
-  { state with diff = !new_diff }
+
+
+  { state with diff = !new_diff; repr = new_repr }
 
 
 
@@ -281,35 +298,20 @@ let take_json_cells json field = Yojson.Basic.Util.(
 )
 
 
-let make_field width height =
-  Array.make_matrix height width false
-;;
-
-
-
-let make_filled_field width height json_cells =
-  let f = make_field width height in
-
-  let put_figure jsc =
-    let x, y = json_cell jsc in
-    f.(y).(x) <- true
-  in
-
-  List.iter json_cells ~f:put_figure;
-
-  f
-;;
-
-
-
-
 
 let state_heuristic state =
+
+  let rec pow2 = function
+    | 0 -> 1
+    | 1 -> 2
+    | n -> let b= pow2 (n / 2) in
+      b * b * (if n mod 2 = 0 then 1 else 2)
+  in
 
   let totes = ref 0 in
   for y = 0 to state.height - 1 do
     for x = 0 to state.width - 1 do
-      if pt_solid true state (x,y) then totes := !totes + y
+      if pt_solid true state (x,y) then totes := !totes + (pow2 y)
     done;
   done;
 
@@ -341,6 +343,15 @@ let make_figure json_fig =
   }
 ;;
 
+let make_initial_repr w h filled =
+  let repr = Array.create (w * h) false in
+  List.iter filled ~f:(fun jsc ->
+    let x,y = json_cell jsc in
+    repr.(y * w + x) <- true
+  );
+  repr
+;;
+
 
   (* atdod masīvu ar steitiem, atbilstošu source_seediem *)
 let states_of_json json = Yojson.Basic.Util.(
@@ -357,15 +368,15 @@ let states_of_json json = Yojson.Basic.Util.(
     figures = List.map units ~f:make_figure;
     width = w;
     height = h;
-    field = make_filled_field w h filled;
     remaining = source_length;
     initial_seed = 0;
     seed = 0;
     diff = [];
+    repr = make_initial_repr w h filled
   } in
 
   List.map source_seeds ~f:(fun (seed) ->
-    { base_state with 
+    { base_state with
       seed = to_int seed;
       initial_seed = to_int seed;
     }
@@ -387,8 +398,8 @@ let rec put_figure_on_board_and_go (states:state_t list) : state_t =
 
   let hashes = ref [] in
 
-  let next_states = 
-    List.fold ~init:[] states ~f:(fun accu state -> 
+  let next_states =
+    List.fold ~init:[] states ~f:(fun accu state ->
       List.append accu (next_states state hashes)
     )
   in
@@ -397,7 +408,7 @@ let rec put_figure_on_board_and_go (states:state_t list) : state_t =
   | None -> failwith "ok"
   | Some s ->
       (* print_state s; *)
-      if not (is_terminal_state s) then 
+      if not (is_terminal_state s) then
         put_figure_on_board_and_go next_states
       else s
   )

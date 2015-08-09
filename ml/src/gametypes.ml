@@ -1,4 +1,3 @@
-type field_t = bool array array
 
 type cell_t = int * int
 
@@ -20,10 +19,10 @@ type state_t =
   ; figures: figure_t list
   ; width: int
   ; height: int
-  ; field: field_t
   ; initial_seed: int
   ; seed: int
   ; remaining: int (* inv sourceLength *)
   ; diff: diff_t list
+  ; repr: bool array
 }
 
