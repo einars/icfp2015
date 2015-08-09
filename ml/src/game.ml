@@ -78,7 +78,7 @@ let initial_figure_offset state fig =
   xoffs, yoffs
 ;;
 
-let offset_fig fig xoffs yoffs =
+let offset_fig fig (xoffs,yoffs) =
   let px, py = fig.pivot in
   { members = List.map fig.members ~f:(fun (x,y) -> (x + xoffs), (y + yoffs) )
   ; pivot   = (px + xoffs), (py + yoffs)
@@ -178,15 +178,11 @@ let pick_new_or_finalize state =
     let n, next_seed = next_random state.seed in
     let n_fig = (n mod (List.length state.figures)) in
     let fig = List.nth_exn state.figures n_fig in
-    (* novietojam figūru pareizajā centrā *)
-    let xoffs, yoffs = initial_figure_offset state fig in
-    (* apdeitojam koordinātes *)
-    let moved_figure = offset_fig fig xoffs yoffs in
 
-    if fig_touches_something state moved_figure.members then
+    if fig_touches_something state fig.members then
       { state with diff = (Finish true) :: state.diff }
     else
-      { state with seed = next_seed; remaining = state.remaining - 1; diff = (LivePlacement (moved_figure, [])) :: state.diff }
+      { state with seed = next_seed; remaining = state.remaining - 1; diff = (LivePlacement (fig, [])) :: state.diff }
 ;;
 
 
@@ -352,6 +348,15 @@ let make_initial_repr w h filled =
   repr
 ;;
 
+let readjust_figures state =
+
+  let readjust_figure fig =
+    offset_fig fig (initial_figure_offset state fig)
+  in
+
+
+  { state with figures = List.map state.figures ~f:readjust_figure }
+
 
   (* atdod masīvu ar steitiem, atbilstošu source_seediem *)
 let states_of_json json = Yojson.Basic.Util.(
@@ -373,7 +378,7 @@ let states_of_json json = Yojson.Basic.Util.(
     seed = 0;
     diff = [];
     repr = make_initial_repr w h filled
-  } in
+  } |> readjust_figures  in
 
   List.map source_seeds ~f:(fun (seed) ->
     { base_state with
