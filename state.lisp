@@ -40,7 +40,7 @@
 
 (defstruct score (size 0) (lines 0) history)
 
-(defstruct board grid pieces log cmd done stats)
+(defstruct board grid pieces log cmd done (stats '(0 0)))
 
 (defun last-move (board)
   (first (board-pieces board)))

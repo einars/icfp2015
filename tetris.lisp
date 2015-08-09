@@ -33,15 +33,19 @@
 (defun random-elt (list)
   (elt list (random (length list))))
 
-(defun update-board-height (board y)
-  (setf (board-stats board) (min y (board-stats board))))
+(defun update-board-height (board &key absolute diff)
+  (when absolute (setf (first (board-stats board)) absolute))
+  (when diff (incf (first (board-stats board)) diff)))
+
+(defun get-board-height (board)
+  (first (board-stats board)))
 
 (defun parse-board (data board)
-  (setf (board-stats board) *board-height*)
+  (update-board-height board :absolute *board-height*)
   (dolist (locked (get-item :filled data))
     (let ((x (get-item :x locked))
 	  (y (get-item :y locked)))
-      (update-board-height board y)
+      (update-board-height board :absolute y)
       (setf (aref (board-grid board) x y) 1))))
 
 (defun pretty-cell (number)
@@ -81,10 +85,13 @@
 	(setf (aref grid x y) (aref (board-grid board) x y))))
     grid))
 
+(defun duplicate-internals (board)
+  (setf (board-stats board) (copy-list (board-stats board)))
+  (setf (board-grid board) (copy-grid board))
+  board)
+
 (defun clone-board (board)
-  (let ((copy (copy-board board)))
-    (setf (board-grid copy) (copy-grid board))
-    copy))
+  (duplicate-internals (copy-board board)))
 
 (defun rnd ()
   (prog1 (logand (ash *seed* -16) #x7fff)
@@ -135,17 +142,17 @@
 
 (defun test-and-update-if-full (row board score)
   (when (is-row-full row board)
-    (incf (board-stats board))
+    (update-board-height board :diff 1)
     (incf (score-lines score))
     (delete-row row board)))
 
 (defun lock-piece-and-update-score (board)
-  (setf (board-grid board) (copy-grid board))
+  (duplicate-internals board)
   (let ((rows nil) (score (make-score :history (board-pieces board))))
     (push score (board-log board))
     (dolist (i (board-active-cells board))
       (setf (aref (board-grid board) (car i) (cdr i)) 1)
-      (update-board-height board (cdr i))
+      (update-board-height board :absolute (cdr i))
       (incf (score-size score))
       (push (cdr i) rows))
     (dolist (i (remove-duplicates rows))
@@ -230,30 +237,9 @@
 (defun try-all-moves (board)
   (remove nil (mapcar (lambda (test) (try-sequence board test)) *patterns*)))
 
-(defun highest-in-column (board x)
-  (let ((roof nil))
-    (dotimes (y *board-height* *board-height*)
-      (let ((cell (aref (board-grid board) x y)))
-	(cond ((= 1 cell) (setf roof t))
-	      ((and roof (= 0 cell)) (return-from highest-in-column y)))))))
-
-(defun highest-hole (board &optional (x 0))
-  (min (highest-in-column board x)
-       (cond ((= x (1- *board-width*)) *board-height*)
-	     (t (highest-hole board (1+ x))))))
-
-(defun remove-lowest (top holes pool)
-  (cond ((null pool) nil)
-	((< (first holes) top)
-	 (remove-lowest top (rest holes) (rest pool)))
-	(t (cons (first pool) (remove-lowest top (rest holes) (rest pool))))))
-
 (defun best-of (pool)
   (when pool
-    (let* ((heights (mapcar #'highest-hole pool))
-	   (highest (reduce #'max heights))
-	   (pruned (remove-lowest highest heights pool)))
-      (first (sort pruned #'> :key #'board-stats)))))
+    (first (sort pool #'> :key #'get-board-height))))
 
 (defun get-solution (board)
   (dotimes (*rank* *total-moves* board)
