@@ -1,6 +1,6 @@
 (defpackage :icfp/solver
   (:nicknames :solver)
-  (:use :cl :alexandria :icfp/graph :icfp/dijkstra :icfp/decoupled-tetris :icfp/gui :icfp/state)
+  (:use :cl :alexandria :icfp/graph :icfp/dijkstra :icfp/decoupled-tetris :icfp/gui :icfp/state :icfp/simulator)
   (:export :solve))
 
 (in-package :icfp/solver)
@@ -11,26 +11,30 @@
 (defvar *mapped-vertices*)
 (defvar *last-mapped-board*)
 
+(defvar *with-gui*)
+
 (defun solve (number &key (with-gui t) (search-depth 0))
   (let ((*search-depth* search-depth)
 	(*mapped-vertices* nil)
-	(*last-mapped-board* nil))
-    (solve-problem number :solver #'solve1 :with-gui with-gui)))
+	(*last-mapped-board* nil)
+	(*with-gui* with-gui))
+    (if with-gui
+	(solve-problem number
+		       :solver (gen-simulator #'solve1)
+		       :with-gui with-gui))))
 
-(defun solve1 (id seed board with-gui)
-  (if with-gui
-      (run-gui board (lambda ()
-		       (with-current-board board
-			 (solve2))))
-      (with-current-board board
-	(solve2))))
+(defun solve1 (board)
+  (with-current-board board
+    (solve2)))
 
 (defun solve2 ()
   (with-next-unit unit
     (let* ((*all-vertices* nil)
 	   (curr-vertice (make-vertice :unit unit))
 	   (best-vertice (find-best-vertice curr-vertice)))
-      (apply-path (nreverse (get-path best-vertice)) (vertice-unit best-vertice))
+      (if *with-gui*
+	  (apply-path (nreverse (get-path best-vertice)) (vertice-unit best-vertice) :apply-fun #'play-move)
+	  (apply-path (nreverse (get-path best-vertice)) (vertice-unit best-vertice)))
       (solve2))))
 
 (defun get-path (vertice)
@@ -92,7 +96,7 @@
 	best-vertice-score)
     (setf *all-vertices* (remove-if-not #'vertice-placeable-p mapped-vertices))
     (setf *all-vertices* (sort *all-vertices* (lambda (a b) (> (vertice-distance a) (vertice-distance b)))))
-    (dolist (vertice (subseq *all-vertices* 0 (min 20 (length *all-vertices*))))
+    (dolist (vertice (subseq *all-vertices* 0 (min 50 (length *all-vertices*))))
       (when (vertice-placeable-p vertice)
 	(let ((score (if (< depth *search-depth*)
 			 (+ (score-vertice vertice)
@@ -111,8 +115,31 @@
     (values best-vertice best-vertice-score)))
 
 (defun score-vertice (vertice)
-  (with-unit-applied (vertice-unit vertice)
-    (+ (* 100 (last-application-deleted-rows))
-       (reduce (lambda (acc point) (- acc (sqrt (- *board-height* (cdr point)))))
-	       (cdr (vertice-unit vertice))
-	       :initial-value 0))))
+  (+ (with-unit-applied (vertice-unit vertice)
+       (+ (* 100 (last-application-deleted-rows))
+	  #+nil(reduce (lambda (acc point) (- acc (sqrt (- *board-height* (cdr point)))))
+		       (cdr (vertice-unit vertice))
+		       :initial-value 0)))
+     (reduce (lambda (acc point)
+	       (+ acc (score-connected point)))
+	     (cdr (vertice-unit vertice))
+	     :initial-value 0)))
+
+(defun score-connected (point)
+  (loop as point in (list (move-unit (list point) :E)
+			  (move-unit (list point) :W)
+			  (move-unit (list point) :SE)
+			  (move-unit (list point) :SW)
+			  (move-unit (list point) :NE)
+			  (move-unit (list point) :NW))
+     sum (filled-or-walled (car point))))
+
+(defun filled-or-walled (point)
+  (destructuring-bind (x . y) point
+    (cond
+      ((< y 0) 0)
+      ((or (< x 0)
+	   (>= x *board-width*)) (if (evenp y) 0.5 0.3))
+      ((or (>= y *board-height*)
+	   (pos-filled point)) 1)
+      (t 0))))
