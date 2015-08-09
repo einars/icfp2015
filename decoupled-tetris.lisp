@@ -42,8 +42,8 @@
      ,@body))
 
 (defun find-full-rows ()
-  (loop as y from (1- *board-width*) downto 0
-     when (loop as x from 0 below *board-height*
+  (loop as y from (1- *board-height*) downto 0
+     when (loop as x from 0 below *board-width*
 	     always (pos-filled (cons x y)))
        collect y))
 
@@ -82,11 +82,12 @@
       (not (zerop (aref *base-board* x y))))))
 
 
-(defun apply-path (path final-unit)
-  (dolist (move path)
-    (setf *board* (make-move *board* move))
-    (update-gui *board*))
+(defun apply-path (path final-unit)  
+  (update-gui *board*)  
   (setf *delta* nil)
+  (dolist (move path)
+    (setf *board* (make-move *board* move))    
+    (update-gui *board*))
   (cond
     ((not (legal-position-p (move-unit final-unit :E)))
      (setf *board* (make-move *board* :E)))
@@ -101,7 +102,7 @@
     ((not (legal-position-p (move-unit final-unit :R-)))
      (setf *board* (make-move *board* :R-)))
     (t (error "Invalid final unit ~A" final-unit)))  
-  (update-gui *board*)
+  (update-gui *board*)  
   (setf *base-board* (board-grid *board*)))
 
 
@@ -146,13 +147,30 @@
 	 (rotated-cube (mapcar #'+ cube-pivot (rotate-cube normalized))))
     (cube-2-pos rotated-cube)))
 
+(defparameter *rotate-cw-cache* (make-hash-table :test 'equalp))
+(defparameter *rotate-ccw-cache* (make-hash-table :test 'equalp))
+
 (defun rotate-cw (unit)
+  (if-let ((cached-unit (gethash unit *rotate-cw-cache*)))
+    cached-unit
+    (progn
+      (setf (gethash unit *rotate-cw-cache*) (rotate-cw1 unit))
+      (rotate-cw unit))))
+
+(defun rotate-cw1 (unit)
   (let ((pivot (car unit)))
     (cons pivot (mapcar (lambda (point)
 			  (rotate-point pivot point))
 			(cdr unit)))))
 
 (defun rotate-ccw (unit)
+  (if-let ((cached-unit (gethash unit *rotate-ccw-cache*)))
+    cached-unit
+    (progn
+      (setf (gethash unit *rotate-ccw-cache*) (rotate-ccw1 unit))
+      (rotate-ccw unit))))
+
+(defun rotate-ccw1 (unit)
   (let ((pivot (car unit)))
     (cons pivot (mapcar (lambda (point)
 			  (rotate-point

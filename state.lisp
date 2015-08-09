@@ -1,6 +1,6 @@
 (defpackage :icfp/state
   (:nicknames :state)
-  (:use :cl)
+  (:use :cl :alexandria)
   (:export :*board-width* :*board-height* :*total-moves* :last-move
 	   :board :board-grid :board-pivot :board-active-cells :board-pieces
 	   :make-pos :pos-x :pos-y :pos-add :pos-sub :adjust-pos :copy-pos
@@ -54,7 +54,7 @@
     (convert-pos result)))
 
 (defun board-pivot (board)
-  (let ((last (last-move board)))
+  (when-let ((last (last-move board)))
     (adjust-pos (piece-pivot last) (piece-offset last))))
 
 (defun active-cells (piece)

@@ -3,8 +3,8 @@
   (:use :cl :alexandria :icfp/state :icfp/decoupled-tetris)
   (:export :get-connected-vertices
 	   :vertice :make-vertice
-	   :vertice-visited :vertice-distance :vertice-index :vertice-unit :vertice-closest-vertice
-	   :visited :distance :index :unit :closest-vertice
+	   :vertice-visited :vertice-distance :vertice-index :vertice-unit :vertice-closest-vertice :vertice-force-recalc
+	   :visited :distance :index :unit :closest-vertice :force-recalc
 	   :vertice-placeable-p :placeable-p
 	   :with-cached-vertices))
 
@@ -12,10 +12,12 @@
 
 (defvar *vertices*)
 
-(defstruct vertice visited distance index unit placeable-p closest-vertice)
+(defstruct vertice visited distance index unit placeable-p closest-vertice force-recalc)
 
-(defmacro with-cached-vertices (&body body)
+(defmacro with-cached-vertices (vertices &body body)
   `(let ((*vertices* (make-hash-table :test #'equalp)))
+     (dolist (vertice ,vertices)
+       (setf (gethash (vertice-unit vertice) *vertices*) vertice))
      ,@body))
 
 (defun get-connected-vertices (vertice)
