@@ -23,6 +23,7 @@ type state_t =
   ; initial_seed: int
   ; seed: int
   ; remaining: int (* inv sourceLength *)
+  ; sourcelength: int
   ; diff: diff_t list
   ; repr: bool array
 }

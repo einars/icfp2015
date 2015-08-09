@@ -8,6 +8,9 @@ let move_w (x,y) = x - 1, y
 let move_sw (x,y) = x + (if y % 2 = 1 then 0 else -1), y + 1
 let move_se (x,y) = x + (if y % 2 = 1 then  1 else 0), y + 1
 
+let move_nw (x,y) = x + (if y % 2 = 1 then 0 else -1), y - 1
+let move_ne (x,y) = x + (if y % 2 = 1 then  1 else 0), y - 1
+
 let turn_cw (px, py) (x, y) =
 
   (* pivot 2d to cube *)

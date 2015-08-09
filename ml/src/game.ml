@@ -10,6 +10,15 @@ let s_of_pt pt = sprintf "[%d:%d]" (fst pt) (snd pt)
 
 let first_moves = [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW; MOVE_E ; MOVE_W ]
 
+let next_moves = function
+  | MOVE_E   -> [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW; MOVE_E          ]
+  | MOVE_W   -> [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW;          MOVE_W ]
+  | MOVE_SE  -> [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW; MOVE_E ; MOVE_W ]
+  | MOVE_SW  -> [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW; MOVE_E ; MOVE_W ]
+  | TURN_CW  -> [ MOVE_SE ; MOVE_SW ; TURN_CW;           MOVE_E ; MOVE_W ]
+  | TURN_CCW -> [ MOVE_SE ; MOVE_SW ;          TURN_CCW; MOVE_E ; MOVE_W ]
+  | NOP      -> first_moves
+
 let s_of_moves moves =
   let mcs = List.rev_map moves ~f:(function
     | _, s -> s
@@ -272,6 +281,25 @@ let initial_hash state =
 let default_moves = [ MOVE_SE,"m" ; MOVE_SW, "a" ; TURN_CW, "q"; TURN_CCW, "k"; MOVE_E, "b" ; MOVE_W, "p" ]
 
 
+let global_dupes = ref blank_hash
+let state_hash state =
+  let repr = Array.copy state.repr in
+  List.iter (moved_fig_pos state) ~f:(fun (x,y) -> repr.(y * state.width + x) <- true);
+  String.concat (List.map (Array.to_list repr) ~f:(fun x -> if x then "i" else "o"))
+;;
+
+let global_dup_removal = function
+  | Finalizing st ->
+      let hash = state_hash st in
+      if Set.mem !global_dupes hash then Borkbork
+      else (
+        global_dupes := Set.add !global_dupes hash;
+        Finalizing st
+      )
+  | foo -> foo
+;;
+
+
 let apply_move state (move:ext_move_t) ref_hashes =
   match state.diff with 
     | (LivePlacement (fig, moves)) :: _ ->
@@ -284,7 +312,7 @@ let apply_move state (move:ext_move_t) ref_hashes =
           if Set.mem !ref_hashes fig_hash then Borkbork else (
             ref_hashes := Set.add !ref_hashes fig_hash;
             if fig_touches_something state translated_fig.members then (
-              Finalizing state
+              (Finalizing state) (* |> global_dup_removal *)
             ) else (
               Running { state with diff = (LivePlacement (translated_fig, ( move :: moves) )) :: (List.tl_exn state.diff) }
             )
@@ -322,7 +350,13 @@ let process_state ?(power_words=[]) state =
   let target_pool = ref [] in
   let hashes = ref (initial_hash state) in
 
+  (*
+  print_state state;
+  eprintf "process_state start\n%!";
+  *)
+
   while !source_pool <> [] do
+    (* eprintf "process_state source_pool = %d\n%!" (List.length !source_pool); *)
     let pool = !source_pool in 
     source_pool := [];
     List.iter pool ~f:(fun state ->
@@ -353,6 +387,8 @@ let process_state ?(power_words=[]) state =
     (* List.iter !source_pool ~f:(ignored print_state); *)
     (* printf "\nHave %d in source pool\n%!" (List.length !source_pool); *)
   done;
+
+  (* eprintf "process_state finished, target_pool = %d\n%!" (List.length !target_pool); *)
 
   !target_pool
 
@@ -389,6 +425,32 @@ let state_heuristic state =
   let moved_pos = moved_fig_pos state in
 
   let totes = ref 0 in
+
+  let out_of_bounds (x,y) =
+    x < 0 || y < 0 || x >= state.width || y >= state.height
+  in
+
+  let strapon pt =
+    let rec r_strapon pt penalize accum func = 
+      if out_of_bounds pt then accum else
+      if pt_solid_live state pt 
+      then r_strapon (func pt) true accum func
+      else r_strapon (func pt) false (if penalize then accum + 1 else accum) func
+    in
+      + 3 * r_strapon pt false 0 move_se
+  in
+
+
+  let penalty = ref 0 in
+  for x = 0 to state.width - 1 do
+    penalty := !penalty + strapon (x,0)
+  done;
+  for y = 0 to state.height - 1 do
+    penalty := !penalty + strapon (0,y)
+  done;
+
+  totes := !totes - !penalty;
+
   (*
   for y = 0 to state.height - 1 do
     for x = 0 to state.width - 1 do
@@ -403,13 +465,26 @@ let state_heuristic state =
   );
 
   List.iter moved_pos  ~f:(
+    fun (x,y) -> totes := !totes + y
+  );
+
+
+  (*
+
+  List.iter moved_pos  ~f:(
     fun pt ->
-      if (not (pt_solid_live state (move_sw pt))) then totes := !totes -1;
-      if (not (pt_solid_live state (move_se pt))) then totes := !totes -1;
-      if (not (pt_solid_live state (move_e pt))) then totes := !totes -1;
-      if (not (pt_solid_live state (move_w pt))) then totes := !totes -1;
+      (*
+      if (not (pt_solid_live state (move_nw pt))) then totes := !totes -1;
+      if (not (pt_solid_live state (move_ne pt))) then totes := !totes -1;
+      *)
+
+      if (not (pt_solid_live state (move_sw pt))) then totes := !totes -4;
+      if (not (pt_solid_live state (move_se pt))) then totes := !totes -4;
+      if (not (pt_solid_live state (move_e pt))) then totes := !totes -2;
+      if (not (pt_solid_live state (move_w pt))) then totes := !totes -2;
       totes := !totes + 5 * (snd pt)
   );
+  *)
 
   (*
   print_state state |> ignore;
@@ -471,6 +546,7 @@ let states_of_json json = Yojson.Basic.Util.(
     width = w;
     height = h;
     remaining = source_length;
+    sourcelength = source_length;
     initial_seed = 0;
     seed = 0;
     diff = [];
@@ -498,7 +574,7 @@ let lock_with_move ((state:state_t),(move:ext_move_t)) =
 ;;
 
 
-let rec put_figure_on_board_and_go power_words (states:state_t list) : state_t =
+let rec put_figure_on_board_and_go depth power_words (states:state_t list) : state_t =
 
   let all_finals_to_consider = 
     List.fold states ~init:[] ~f:(fun accum state -> List.append accum (process_state ~power_words state ))
@@ -512,10 +588,15 @@ let rec put_figure_on_board_and_go power_words (states:state_t list) : state_t =
   (match List.hd next_states with
   | None -> failwith "ok"
   | Some s ->
+      eprintf "\r%3d%% %d / %d%!" (depth * 100 / s.sourcelength) depth s.sourcelength;
+
       (* print_state s; *)
       if not (is_terminal_state s) then
-        put_figure_on_board_and_go power_words next_states
-      else s
+        put_figure_on_board_and_go (succ depth) power_words next_states
+      else (
+        eprintf "\r                              \n";
+        s
+      )
   )
 ;;
 
@@ -541,7 +622,7 @@ let process_power_words words = List.map words ~f:process_power_word
 let solve ?(power_words=[]) state =
   eprintf "Solving seed %04x\n%!" state.initial_seed;
   (* ignore(print_state state); *)
-  put_figure_on_board_and_go (process_power_words power_words) [ state |> pick_new_or_finalize ]
+  put_figure_on_board_and_go 1 (process_power_words power_words) [ state |> pick_new_or_finalize ]
 ;;
 
 
