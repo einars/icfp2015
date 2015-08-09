@@ -12,12 +12,16 @@
 (defvar *last-mapped-board*)
 
 (defvar *with-gui*)
+(defvar *try-depth*)
+(defvar *last-clear*)
 
-(defun solve (number &key (with-gui t) (search-depth 0))
+(defun solve (number &key (with-gui t) (search-depth 0) try-depth)
   (let ((*search-depth* search-depth)
 	(*mapped-vertices* nil)
 	(*last-mapped-board* nil)
-	(*with-gui* with-gui))
+	(*with-gui* with-gui)
+	(*try-depth* try-depth)
+	(*last-clear* nil))
     (if with-gui
 	(solve-problem number
 		       :solver (gen-simulator #'solve1)
@@ -95,8 +99,11 @@
 	(mapped-vertices (smart-map start-vertice))
 	best-vertice-score)
     (setf *all-vertices* (remove-if-not #'vertice-placeable-p mapped-vertices))
-    (setf *all-vertices* (sort *all-vertices* (lambda (a b) (> (vertice-distance a) (vertice-distance b)))))
-    (dolist (vertice (subseq *all-vertices* 0 (min 50 (length *all-vertices*))))
+    (when *try-depth*
+      (setf *all-vertices* (sort *all-vertices* (lambda (a b) (> (vertice-distance a) (vertice-distance b))))))
+    (dolist (vertice (subseq *all-vertices* 0 (if *try-depth*
+						  (min *try-depth* (length *all-vertices*))
+						  (length *all-vertices*))))
       (when (vertice-placeable-p vertice)
 	(let ((score (if (< depth *search-depth*)
 			 (+ (score-vertice vertice)
@@ -114,16 +121,26 @@
       (format t "~%~A" best-vertice-score))
     (values best-vertice best-vertice-score)))
 
+
 (defun score-vertice (vertice)
   (+ (with-unit-applied (vertice-unit vertice)
-       (+ (* 100 (last-application-deleted-rows))
+       (+ (prog1 (cond
+		   (*last-clear* (* (last-application-deleted-rows) 1000))
+		   ((eql (last-application-deleted-rows) 1)
+		    (* (- 0.6 (/ (cdar (vertice-unit vertice)) *board-height*)) 30))
+		   (t (* (last-application-deleted-rows) 500)))
+	    (setf *last-clear* (> (last-application-deleted-rows) 1)))
 	  #+nil(reduce (lambda (acc point) (- acc (sqrt (- *board-height* (cdr point)))))
 		       (cdr (vertice-unit vertice))
 		       :initial-value 0)))
      (reduce (lambda (acc point)
-	       (+ acc (score-connected point)))
+	       (+ acc
+		  (score-connected point)
+		  (* -2 (score-overhangs point))))
 	     (cdr (vertice-unit vertice))
-	     :initial-value 0)))
+	     :initial-value 0)
+     (* 1 (loop as point in (cdr (vertice-unit vertice))
+		maximize (cdr point)))))
 
 (defun score-connected (point)
   (loop as point in (list (move-unit (list point) :E)
@@ -133,6 +150,16 @@
 			  (move-unit (list point) :NE)
 			  (move-unit (list point) :NW))
      sum (filled-or-walled (car point))))
+
+(defun score-overhangs (point)
+  (loop as point in (list (move-unit (list point) :SE)
+			  (move-unit (list point) :SW))
+     count (destructuring-bind (x . y) (car point)
+	     (and (>= x 0)
+		  (< x *board-width*)
+		  (>= y 0)
+		  (< y *board-height*)
+		  (not (pos-filled (car point))))))))
 
 (defun filled-or-walled (point)
   (destructuring-bind (x . y) point
