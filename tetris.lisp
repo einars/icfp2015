@@ -259,13 +259,16 @@
 (defun NE-cell (x y)
   (cons (+ x (mod y 2)) (- y 1)))
 
+(defun taken-cell (board cell)
+  (and (cell-on-board cell) (not (free-cell board cell))))
+
 (defun count-holes (board)
   (let ((count 0))
     (dotimes (x *board-width*)
       (dotimes (y *board-height*)
 	(when (and (free-cell board (cons x y))
-		   (good-cell board (NW-cell x y))
-		   (good-cell board (NE-cell x y)))
+		   (not (taken-cell board (NW-cell x y)))
+		   (not (taken-cell board (NE-cell x y))))
 	  (incf count))))
     (setf (second (board-stats board)) count)))
 
@@ -285,8 +288,8 @@
   (when pool
     (mapc #'count-holes pool)
     (first (sift pool (list (cons #'> #'board-lines)
-			    (cons #'> #'get-board-height)
-			    (cons #'> #'hole-count))))))
+			    (cons #'> #'hole-count)
+			    (cons #'> #'get-board-height))))))
 
 (defun get-solution (board)
   (dotimes (*rank* *total-moves* board)
