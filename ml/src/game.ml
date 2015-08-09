@@ -424,6 +424,7 @@ let state_heuristic state =
   (* let is_live = is_live_state state in *)
   let moved_pos = moved_fig_pos state in
 
+
   let totes = ref 0 in
 
   let out_of_bounds (x,y) =
