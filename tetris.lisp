@@ -105,9 +105,11 @@
 (defun adjust-piece-turn (piece turn)
   (setf (piece-turn piece) (mod (+ (piece-turn piece) turn) 6)))
 
+(defun free-cell (board cell)
+  (= 0 (aref (board-grid board) (car cell) (cdr cell))))
+
 (defun good-cell (board cell)
-  (and (cell-on-board cell)
-       (= 0 (aref (board-grid board) (car cell) (cdr cell)))))
+  (and (cell-on-board cell) (free-cell board cell)))
 
 (defun is-outside (board cells)
   (cond ((null cells) nil)
@@ -237,9 +239,35 @@
 (defun try-all-moves (board)
   (remove nil (mapcar (lambda (test) (try-sequence board test)) *patterns*)))
 
+(defun NW-cell (x y)
+  (cons (- x (- 1 (mod y 2))) (- y 1)))
+
+(defun NE-cell (x y)
+  (cons (+ x (mod y 2)) (- y 1)))
+
+(defun count-holes (board)
+  (let ((count 0))
+    (dotimes (x *board-width*)
+      (dotimes (y *board-height*)
+	(unless (and (free-cell board (cons x y))
+		     (good-cell board (NW-cell x y))
+		     (good-cell board (NE-cell x y)))
+	  (incf count))))
+    (setf (second (board-stats board)) count)))
+
+(defun hole-count (board)
+  (second (board-stats board)))
+
+(defun remove-with-bad-holes (all count)
+  (remove-if (lambda (x) (> (hole-count x) count)) all))
+
 (defun best-of (pool)
   (when pool
-    (first (sort pool #'> :key #'get-board-height))))
+    (mapc #'count-holes pool)
+    (let* ((by-hole-count (sort pool #'< :key #'hole-count))
+	   (best-count (hole-count (first by-hole-count)))
+	   (least-holes (remove-with-bad-holes pool best-count)))
+      (first (sort least-holes #'> :key #'get-board-height)))))
 
 (defun get-solution (board)
   (dotimes (*rank* *total-moves* board)
