@@ -46,10 +46,10 @@ let run_test_suite () =
     ] } |> maybe_drop in
 
 
-  assert ( true  = pt_solid false fd_4x4t (0,0) );
-  assert ( false = pt_solid false fd_4x4t (0,1) );
-  assert ( true  = pt_solid false fd_4x4t (1,1) );
-  assert ( false = pt_solid false fd_4x4t (1,0) );
+  assert ( true  = pt_solid fd_4x4t (0,0) );
+  assert ( false = pt_solid fd_4x4t (0,1) );
+  assert ( true  = pt_solid fd_4x4t (1,1) );
+  assert ( false = pt_solid fd_4x4t (1,0) );
 
   let fd_4x4drop = { fd_4x4 with diff =
     (*
@@ -60,14 +60,14 @@ let run_test_suite () =
     [(LockedPlacement ({ pivot = 0,0; members = [(0,1); (1,1); (2,1); (3,1); (1,0); (2,0) ] }, [])) ]
     } |> maybe_drop in
 
-  assert ( false = pt_solid false fd_4x4drop (0,0) );
-  assert ( false = pt_solid false fd_4x4drop (1,0) );
-  assert ( false = pt_solid false fd_4x4drop (2,0) );
-  assert ( false = pt_solid false fd_4x4drop (3,0) );
-  assert ( false = pt_solid false fd_4x4drop (0,1) );
-  assert ( true  = pt_solid false fd_4x4drop (1,1) );
-  assert ( true  = pt_solid false fd_4x4drop (2,1) );
-  assert ( false = pt_solid false fd_4x4drop (3,1) );
+  assert ( false = pt_solid fd_4x4drop (0,0) );
+  assert ( false = pt_solid fd_4x4drop (1,0) );
+  assert ( false = pt_solid fd_4x4drop (2,0) );
+  assert ( false = pt_solid fd_4x4drop (3,0) );
+  assert ( false = pt_solid fd_4x4drop (0,1) );
+  assert ( true  = pt_solid fd_4x4drop (1,1) );
+  assert ( true  = pt_solid fd_4x4drop (2,1) );
+  assert ( false = pt_solid fd_4x4drop (3,1) );
 
   let fd_4x4drop = { fd_4x4 with diff =
     (*
@@ -77,14 +77,14 @@ let run_test_suite () =
      * *)
     [(LockedPlacement ({ pivot = 0,0; members = [(0,3); (1,3); (2,3); (3,3); (1,2); (2,2) ] }, [])) ]
     } |> maybe_drop in
-  assert ( false = pt_solid false fd_4x4drop (0,2) );
-  assert ( false = pt_solid false fd_4x4drop (1,2) );
-  assert ( false = pt_solid false fd_4x4drop (2,2) );
-  assert ( false = pt_solid false fd_4x4drop (3,2) );
-  assert ( false = pt_solid false fd_4x4drop (0,3) );
-  assert ( true  = pt_solid false fd_4x4drop (1,3) );
-  assert ( true  = pt_solid false fd_4x4drop (2,3) );
-  assert ( false = pt_solid false fd_4x4drop (3,3) );
+  assert ( false = pt_solid fd_4x4drop (0,2) );
+  assert ( false = pt_solid fd_4x4drop (1,2) );
+  assert ( false = pt_solid fd_4x4drop (2,2) );
+  assert ( false = pt_solid fd_4x4drop (3,2) );
+  assert ( false = pt_solid fd_4x4drop (0,3) );
+  assert ( true  = pt_solid fd_4x4drop (1,3) );
+  assert ( true  = pt_solid fd_4x4drop (2,3) );
+  assert ( false = pt_solid fd_4x4drop (3,3) );
 
 
 

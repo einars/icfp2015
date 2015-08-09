@@ -39,6 +39,20 @@ let s_of_moves_dbg moves =
 ;;
 
 
+let is_terminal_state state = match state.diff with
+  | Finish _ :: _ -> true
+  | _ -> false
+;;
+
+let is_live_state state = match state.diff with
+  | LivePlacement _ :: _ -> true
+  | _ -> false
+;;
+
+let moved_fig_pos state = match state.diff with
+  | (LivePlacement (fig, _)) :: _ -> fig.members
+  | _ -> []
+;;
 
 let figure_hash fig =
   let items = List.sort ~cmp:(fun (a,b) (c,d) -> if a = c then b - d else a - c) fig.members
@@ -96,20 +110,21 @@ let next_random seed =
 ;;
 
 
+let pt_solid state (x,y) =
+  if x < 0 || x >= state.width || y < 0 || y >= state.height
+  then true
+  else state.repr.(y * state.width + x)
 
-let pt_solid check_live state (x,y) =
+let pt_solid_live state (x,y) =
 
-  let check_live_block () =
-    if not check_live then false
-    else match state.diff with
+  let check_live_block () = match state.diff with
     | LivePlacement (fig, _) :: _ -> List.mem fig.members (x,y)
     | _ -> false
   in
 
   if x < 0 || x >= state.width || y < 0 || y >= state.height
   then true
-  else (check_live_block ()  || state.repr.(y * state.width + x))
-
+  else state.repr.(y * state.width + x) || check_live_block ()
 ;;
 
 
@@ -153,7 +168,7 @@ let print_state state =
     if (y % 2 = 1) then printf " ";
     for x = 0 to state.width - 1 do
 
-      printf "%s" (if pt_solid true state (x,y) then "O " else "· ");
+      printf "%s" (if pt_solid_live state (x,y) then "O " else "· ");
 
     done;
     printf "\n";
@@ -167,7 +182,7 @@ let print_state state =
 
 
 let fig_touches_something state pts =
-  List.exists pts ~f:(pt_solid false state)
+  List.exists pts ~f:(pt_solid state)
 ;;
 
 
@@ -202,7 +217,7 @@ let maybe_drop state =
   for y = 0 to state.height - 1 do
     let drop = ref true in
     for x = 0 to state.width - 1 do
-      if not (pt_solid false tmp_state (x,y)) then drop := false
+      if not (pt_solid tmp_state (x,y)) then drop := false
     done;
     if !drop then begin
       new_diff := (ColumnDrop y) :: !new_diff;
@@ -220,20 +235,21 @@ let maybe_drop state =
 
 
   { state with diff = !new_diff; repr = new_repr }
+;;
 
 
 
 
 let process_live_placement state move (fig, moves) hashes diff =
+
   let translated_fig = moved_fig fig move in
   let fig_hash = figure_hash translated_fig in
-  if List.mem !hashes fig_hash then None else (
+  if Set.mem !hashes fig_hash then None else (
 
-    hashes := fig_hash :: !hashes;
+    hashes := Set.add !hashes fig_hash;
 
     if fig_touches_something state translated_fig.members then (
-      Some (( { state with diff = (LockedPlacement (fig, (move :: moves))) :: diff } |> maybe_drop |> pick_new_or_finalize ), false )
-
+      Some (state, false)
     ) else (
       Some (( { state with diff = (LivePlacement (translated_fig, (move :: moves) )) :: diff }), true)
     )
@@ -241,30 +257,37 @@ let process_live_placement state move (fig, moves) hashes diff =
 ;;
 
 
+let add_new_figure_hash hashes state =
+  begin match state.diff with
+    | (LivePlacement (fig, _)) :: _ ->
+        hashes := Set.add !hashes (figure_hash fig)
+    | _ -> ()
+  end;
+  state
 
-let rec next_states state hashes = match state.diff with
-| []                                      -> [pick_new_or_finalize state]
-| (Finish _)                      :: rest -> [state]
+let rec next_states accum state hashes = match state.diff with
+| [] -> next_states accum (pick_new_or_finalize state |> (add_new_figure_hash hashes) ) hashes
+| (Finish _)                      :: rest -> (state, LOCK_MARK) :: accum
 | (LockedPlacement _)             :: rest -> failwith "Unexpected LockedPlacement"
 | (ColumnDrop _)                  :: rest -> failwith "Unexpected ColumnDrop"
 | (LivePlacement (fig, p)) :: rest ->
-    let out = ref [] in
     let had_lock = ref false in
+
+    let tmp_accum = ref accum in
+
     List.iter first_moves ~f:(
       fun move -> match process_live_placement state move (fig, p) hashes rest with
       | None -> ()
-      | Some (s, true) ->
-          (*
-          printf "Hashes hashed: %d, shit gathered: %d\n" (List.length !hashes) (List.length !out);
-          print_state s;*)
-          out := List.append !out (next_states s hashes)
+      | Some (s, true) -> (* live placement going on, keep on doing it *)
+          tmp_accum := next_states !tmp_accum s hashes
       | Some (s, false) ->
-          (* printf "Booyaka booyaked\n";
-          print_state s; *)
-          if not !had_lock then out := s :: !out;
-          had_lock := true
+          (* lock! append lockables to accum *)
+          if not !had_lock then (
+            had_lock := true;
+            tmp_accum := (state, move) :: !tmp_accum
+          )
     );
-    !out
+    !tmp_accum
 ;;
 
 
@@ -297,27 +320,36 @@ let take_json_cells json field = Yojson.Basic.Util.(
 
 let state_heuristic state =
 
-  let rec pow2 = function
-    | 0 -> 1
-    | 1 -> 2
-    | n -> let b= pow2 (n / 2) in
-      b * b * (if n mod 2 = 0 then 1 else 2)
-  in
+  let is_live = is_live_state state
+  and moved_pos = moved_fig_pos state in
 
   let totes = ref 0 in
+  (*
   for y = 0 to state.height - 1 do
     for x = 0 to state.width - 1 do
-      if pt_solid true state (x,y) then totes := !totes + (pow2 y)
+      if pt_solid_live state (x,y) then totes := !totes + 1 + y
     done;
   done;
+  *)
 
   totes := !totes + 1000 * List.count state.diff ~f:(function
     | ColumnDrop _ -> true
     | _ -> false
   );
 
-  (* print_state state |> ignore;
-  printf "Heur %d\n" !totes |> ignore; *)
+  List.iter moved_pos  ~f:(
+    fun pt ->
+      if (not (pt_solid_live state (move_sw pt))) then totes := !totes -1;
+      if (not (pt_solid_live state (move_se pt))) then totes := !totes -1;
+      if (not (pt_solid_live state (move_e pt))) then totes := !totes -1;
+      if (not (pt_solid_live state (move_w pt))) then totes := !totes -1;
+      totes := !totes + 5 * (snd pt)
+  );
+
+  (*
+  print_state state |> ignore;
+  printf "\nHeur %d\n" !totes |> ignore;
+  *)
   !totes
 ;;
 
@@ -325,9 +357,9 @@ let state_heuristic state =
 let take_some_states n (l:'a list) =
 
   if List.length l < n then l else (
-    let heured = List.map l ~f:(fun a -> (state_heuristic a), a) in
-    let sl = List.sort ~cmp:(fun (ha, a) (hb, b) -> hb - ha) heured in
-    List.map (List.take sl n) ~f:snd
+    let heured = List.map l ~f:(fun (s, m) -> (state_heuristic s), s, m) in
+    let sl = List.sort ~cmp:(fun (h1, s1, m1) (h2, s2, m2) -> h2 - h1) heured in
+    List.map (List.take sl n) ~f:(fun (a,b,c) -> b,c)
   )
 ;;
 
@@ -394,21 +426,28 @@ let first_state_of_json something = states_of_json something |> List.hd_exn
 
 let ignored fn = fun x -> ignore(fn x)
 
-let is_terminal_state state = match state.diff with
-  | Finish _ :: _ -> true
-  | _ -> false
+let lock_with_move (state,move) =
+  if move = LOCK_MARK then state
+  else match state.diff with
+  | (LivePlacement (fig, moves) :: rest) ->
+      { state with diff = (LockedPlacement (fig, (move :: moves))) :: rest } |> maybe_drop |> pick_new_or_finalize
+  | _ -> failwith "lock_with_move, unexpected diff/state"
+;;
 
 
 let rec put_figure_on_board_and_go (states:state_t list) : state_t =
 
-  let hashes = ref [] in
+  let hashes = ref (Set.empty ~comparator:String.comparator) in
 
-  let next_states =
-    List.fold ~init:[] states ~f:(fun accu state ->
-      List.append accu (next_states state hashes)
-    )
+  let all_finals_to_consider = 
+    List.fold states ~init:[] ~f:(fun accum state -> List.append accum (next_states [] state hashes))
   in
-  let next_states = take_some_states 10 next_states in
+
+  (* List.iter all_finals_to_consider ~f:(fun (s,m) -> ignore(print_state s)); *)
+
+  let best_finals = take_some_states 10 all_finals_to_consider in
+  let next_states = List.map best_finals ~f:lock_with_move in
+
   (match List.hd next_states with
   | None -> failwith "ok"
   | Some s ->
