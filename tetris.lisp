@@ -249,7 +249,7 @@
 
 (defun try-all-moves (board)
   (let ((collect nil))
-    (dotimes (turns 5 (remove nil collect))
+    (dotimes (turns 6 (remove nil collect))
       (labels ((try (cmds) (try-cmds board cmds turns)))
 	(setf collect (append (mapcar #'try *patterns*) collect))))))
 
