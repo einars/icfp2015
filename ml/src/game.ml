@@ -8,16 +8,23 @@ open Movement
 
 let s_of_pt pt = sprintf "[%d:%d]" (fst pt) (snd pt)
 
-let first_moves = [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW; MOVE_E ; MOVE_W ]
 
+let m_se = MOVE_SE, "m"
+let m_sw = MOVE_SW, "a"
+let m_cw = TURN_CW, "q"
+let m_cc = TURN_CCW, "k"
+let m_ww = MOVE_E, "b"
+let m_ee = MOVE_W, "p"
+
+let default_moves = [  m_se; m_sw; m_cw; m_cc; m_ww; m_ee ]
 let next_moves = function
-  | MOVE_E   -> [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW; MOVE_E          ]
-  | MOVE_W   -> [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW;          MOVE_W ]
-  | MOVE_SE  -> [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW; MOVE_E ; MOVE_W ]
-  | MOVE_SW  -> [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW; MOVE_E ; MOVE_W ]
-  | TURN_CW  -> [ MOVE_SE ; MOVE_SW ; TURN_CW;           MOVE_E ; MOVE_W ]
-  | TURN_CCW -> [ MOVE_SE ; MOVE_SW ;          TURN_CCW; MOVE_E ; MOVE_W ]
-  | NOP      -> first_moves
+  | MOVE_E   -> [ m_se ; m_sw ; m_cw ; m_cc ; m_ee        ]
+  | MOVE_W   -> [ m_se ; m_sw ; m_cw ; m_cc ;        m_ww ]
+  | MOVE_SE  -> [ m_se ; m_sw ; m_cw ; m_cc ; m_ee ; m_ww ]
+  | MOVE_SW  -> [ m_se ; m_sw ; m_cw ; m_cc ; m_ee ; m_ww ]
+  | TURN_CW  -> [ m_se ; m_sw ; m_cw ;        m_ee ; m_ww ]
+  | TURN_CCW -> [ m_se ; m_sw ;        m_cc ; m_ee ; m_ww ]
+  | NOP      -> default_moves
 
 let s_of_moves moves =
   let mcs = List.rev_map moves ~f:(function
@@ -278,7 +285,6 @@ let initial_hash state =
   end
 ;;
 
-let default_moves = [ MOVE_SE,"m" ; MOVE_SW, "a" ; TURN_CW, "q"; TURN_CCW, "k"; MOVE_E, "b" ; MOVE_W, "p" ]
 
 
 let global_dupes = ref blank_hash
@@ -346,7 +352,7 @@ let process_state ?(power_words=[]) state =
    * state ir starta state, bet viņai ir jābūt aktīvam LivePlacement - iesp., pirmā figūra
    * *)
 
-  let source_pool = ref [ state ] in
+  let source_pool = ref [ state,NOP ] in
   let target_pool = ref [] in
   let hashes = ref (initial_hash state) in
 
@@ -355,12 +361,16 @@ let process_state ?(power_words=[]) state =
   eprintf "process_state start\n%!";
   *)
 
+  let iteration = ref 0 in
   while !source_pool <> [] do
+    iteration := !iteration + 1;
     (* eprintf "process_state source_pool = %d\n%!" (List.length !source_pool); *)
     let pool = !source_pool in 
     source_pool := [];
-    List.iter pool ~f:(fun state ->
+    List.iter pool ~f:(fun (state,last_move) ->
 
+      (* very rarely try using the words *)
+      if (!iteration = 1 || !iteration = 3 || !iteration = 7 || !iteration = 11) then
       (* izejam cauri spēka vārdiem un piefiksējam labus variantus *)
       List.iter power_words ~f:(fun (full_w, w) ->
         let unmodified_hash = !hashes in (* visi vārdi iet ar vienu un to pašu hašu, lai varētu iet paralēli *)
@@ -371,14 +381,14 @@ let process_state ?(power_words=[]) state =
             printf "Applied %s\n%!" full_w;
             apply_power_word ~debug:true state w unmodified_hash;
             *)
-          source_pool := word :: !source_pool;
+          source_pool := (word,NOP) :: !source_pool;
           hashes := Set.union !hashes hash;
       );
 
-      List.iter default_moves ~f:(fun m ->
+      List.iter (next_moves last_move) ~f:(fun m ->
         match apply_move state m hashes with
         | Finalizing s ->  target_pool := (s,m) :: !target_pool
-        | Running s ->  source_pool := s :: !source_pool
+        | Running s ->  source_pool := (s,(fst m)) :: !source_pool
         | Borkbork ->  ()
       )
 
@@ -630,9 +640,9 @@ let rec put_figure_on_board_and_go depth power_words (states:state_t list) : sta
   (match List.hd next_states with
   | None -> failwith "ok"
   | Some s ->
-      if depth <> 100 
+      if s.sourcelength <> 100 
       then eprintf "\r%3d%% %d / %d%!" (depth * 100 / s.sourcelength) depth s.sourcelength
-      else eprintf "\r%3d%%" depth;
+      else eprintf "\r%3d%%%!" depth;
 
       (* print_state s; *)
       if not (is_terminal_state s) then
