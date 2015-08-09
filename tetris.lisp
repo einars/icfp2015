@@ -139,12 +139,6 @@
     (incf (score-lines score))
     (delete-row row board)))
 
-(defun sweet-spot (board)
-  (dotimes (y *board-height*)
-    (dotimes (x *board-width*)
-      (when (= 0 (aref (board-grid board) x (- *board-height* y 1)))
-	(return-from sweet-spot (cons x (- *board-height* y 1)))))))
-
 (defun lock-piece-and-update-score (board)
   (setf (board-grid board) (copy-grid board))
   (let ((rows nil) (score (make-score :history (board-pieces board))))
@@ -155,8 +149,7 @@
       (incf (score-size score))
       (push (cdr i) rows))
     (dolist (i (remove-duplicates rows))
-      (test-and-update-if-full i board score))
-    (setf (board-spot board) (sweet-spot board))))
+      (test-and-update-if-full i board score))))
 
 (defun lock-down (board)
   (pop (board-pieces board))
@@ -404,7 +397,6 @@
 	 (id (get-item :id data))
 	 (new-board (empty-board)))
     (parse-board data new-board)
-    (setf (board-spot new-board) (sweet-spot new-board))
     (dolist (source-seed (get-item :source-seeds data))
       (let ((*seed* source-seed))
 	(let ((*move-sequence* (generate-move-sequence)))
