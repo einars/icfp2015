@@ -158,7 +158,7 @@
 	(update-board-height board :absolute height))
       (incf (score-size score))
       (push (cdr i) rows))
-    (dolist (i (remove-duplicates rows))
+    (dolist (i (sort (remove-duplicates rows) #'<))
       (test-and-update-if-full i board score))))
 
 (defun lock-down (board)
