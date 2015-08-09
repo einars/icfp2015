@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/bash
 
 tag=$(git rev-parse --short HEAD)
 
@@ -36,6 +36,8 @@ for i in $fast; do
   echo "Solving $i to $json"
   test -f $json && printf "File $json already exists"
   test -f $json && exit 200
-  ./play_icfp2015   -p "deep ones" -p "old ones" -p serious -p somethiing -p vancouver -p "arlyeh" -p yuggoth -p aleister -p davar -p azathoth -p "ia! ia!" -p "r'lyeh" -p conway -p cocke -p hopcroft -p backup -p bigboote -f ../problems/problem_$i.json --tag $tag > $json
+  cmd="./play_icfp2015  $(cat words) -f ../problems/problem_$i.json --tag $tag"
+  #echo $cmd
+  eval $cmd > $json
   ./push-solution $json
 done

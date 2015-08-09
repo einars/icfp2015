@@ -379,7 +379,7 @@ let process_state ?(power_words=[]) state =
         | Borkbork ->  ()
       );
 
-      if (!iteration = 1 || !iteration = 3 || !iteration = 7 || !iteration = 11) then
+      if (!iteration mod 5 = 1) then
       (* izejam cauri spēka vārdiem un piefiksējam labus variantus *)
       List.iter power_words ~f:(fun (full_w, w) ->
         match apply_power_word state w unmodified_hash with
