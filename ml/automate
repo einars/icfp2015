@@ -1,7 +1,12 @@
 #!/bin/sh
 
-for i in $(seq 1 23); do
-  echo "Solving $i"
-  ./play_icfp2015  -f ../problems/problem_$i.json --tag $(git rev-parse --short HEAD) >p.json
-  ./push-solution p.json
+tag=$(git rev-parse --short HEAD)
+
+for i in $(seq 1 2); do
+  json=submissions/p.$i.$tag.json
+  echo "Solving $i to $json"
+  test -f $json && printf "File $json already exists"
+  test -f $json && exit 200
+  ./play_icfp2015   -p serious -p aleister -p something -p davar -p human -p vancouver -p azathoth -p "other horrors" -p "deep ones" -p "old ones" -p "r'lyeh"  -f ../problems/problem_$i.json --tag $tag > $json
+  ./push-solution $json
 done

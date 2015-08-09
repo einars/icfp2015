@@ -260,27 +260,16 @@ let process_live_placement state (move,c) (fig, moves) hashes =
 ;;
 
 
-let hashes_updated_with_last_fig hashes state =
+let initial_hash state =
   (* pick_new_or_finalize uzliek figūru, bet hašs netiek apdeitots *)
   begin match state.diff with
     | (LivePlacement (fig, _)) :: _ ->
-        Set.add hashes (figure_hash fig)
-    | _ -> hashes
+        Set.add blank_hash (figure_hash fig)
+    | _ -> blank_hash
   end
 ;;
 
 let default_moves = [ MOVE_SE,"m" ; MOVE_SW, "a" ; TURN_CW, "q"; TURN_CCW, "k"; MOVE_E, "b" ; MOVE_W, "p" ]
-let default_stream () = default_moves
-
-let stream_of_word w =
-  let w = ref w in
-  let rec streamer () = match !w with
-    | [] -> default_stream()
-    | (NOP, c) :: rest -> w := rest; streamer ()
-    | m :: rest -> w := rest; [m]
-  in
-  streamer
-;;
 
 
 let apply_move state (move:ext_move_t) ref_hashes =
@@ -305,7 +294,7 @@ let apply_move state (move:ext_move_t) ref_hashes =
     | _ -> Borkbork
 ;;
 
-let apply_power_word state word hashes =
+let apply_power_word ?(debug=false) state word hashes =
 
   let ref_hashes = ref hashes in
 
@@ -315,7 +304,7 @@ let apply_power_word state word hashes =
       match  apply_move st move ref_hashes with
       | Borkbork -> None
       | Finalizing st -> None
-      | Running st -> apply_power_letter st rest
+      | Running st -> (if debug then ignore(print_state st)); apply_power_letter st rest
     )
   in
 
@@ -331,7 +320,7 @@ let process_state ?(power_words=[]) state =
 
   let source_pool = ref [ state ] in
   let target_pool = ref [] in
-  let hashes = ref blank_hash in
+  let hashes = ref (initial_hash state) in
 
   while !source_pool <> [] do
     let pool = !source_pool in 
@@ -339,11 +328,15 @@ let process_state ?(power_words=[]) state =
     List.iter pool ~f:(fun state ->
 
       (* izejam cauri spēka vārdiem un piefiksējam labus variantus *)
-      List.iter power_words ~f:(fun w ->
+      List.iter power_words ~f:(fun (full_w, w) ->
         let unmodified_hash = !hashes in (* visi vārdi iet ar vienu un to pašu hašu, lai varētu iet paralēli *)
         match apply_power_word state w unmodified_hash with
         | None -> ()
         | Some (word, hash) ->
+            (*
+            printf "Applied %s\n%!" full_w;
+            apply_power_word ~debug:true state w unmodified_hash;
+            *)
           source_pool := word :: !source_pool;
           hashes := Set.union !hashes hash;
       );
@@ -538,7 +531,7 @@ let move_of_char c = match c with
 ;;
 
 let process_power_word word = 
-  List.map ~f:move_of_char (List.rev (String.to_list_rev (String.lowercase word)))
+  word, List.map ~f:move_of_char (List.rev (String.to_list_rev (String.lowercase word)))
 ;;
 
 let process_power_words words = List.map words ~f:process_power_word
