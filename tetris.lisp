@@ -269,11 +269,16 @@
 	 (best-result (funcall key (first sorted-by))))
     (remove-if-not (lambda (x) (= (funcall key x) best-result)) sorted-by)))
 
+(defun sift (pool conditions)
+  (dolist (i conditions pool)
+    (setf pool (leave-best pool (car i) (cdr i)))))
+
 (defun best-of (pool)
   (when pool
     (mapc #'count-holes pool)
-    (let ((best-holes (leave-best pool #'< #'hole-count)))
-      (first (leave-best best-holes #'> #'get-board-height)))))
+    (first (sift pool (list (cons #'> #'board-lines)
+			    (cons #'< #'hole-count)
+			    (cons #'> #'get-board-height))))))
 
 (defun get-solution (board)
   (dotimes (*rank* *total-moves* board)
