@@ -5,6 +5,7 @@ PACKS = core yojson
 SOURCES = ${FILES}
 RESULT  = play_icfp2015
 
+.SILENT:
 
 TARGET  = native-code
 #TARGET  = debug-code

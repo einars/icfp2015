@@ -9,14 +9,14 @@ open Tests
 
 
 
-let run_prog filenames opt_tag first is_debug _ _ _ _ () = 
+let run_prog filenames opt_tag first is_debug _ _ _ power_words () = 
 
   if is_debug then run_test_suite ();
 
   let preprocess = if first then (fun f -> [List.hd_exn f]) else (fun f -> f) in
 
   let solutions = List.map filenames ~f:(fun (filename) ->
-    List.map ~f:solve (preprocess (Yojson.Basic.from_file filename |> states_of_json))
+    List.map ~f:(solve ~power_words) (preprocess (Yojson.Basic.from_file filename |> states_of_json))
   ) in
   let states = List.fold solutions ~init:[] ~f:List.append
       (*
@@ -59,7 +59,7 @@ let main () =
       +> flag "-t" (optional string) ~doc:" (unused) Time limit"
       +> flag "-m" (optional string) ~doc:" (unused) Memory limit"
       +> flag "-c" (optional string) ~doc:" (unused) Core limit"
-      +> flag "-p" (optional string) ~doc:" (unused) Power word"
+      +> flag "-p" (listed string) ~doc:" (unused) Power word"
     )
     run_prog
   |> Command.run

@@ -82,6 +82,6 @@ let moved_fig fig = function
       { pivot = fig.pivot
       ; members = List.map fig.members ~f:(fun pt -> turn_ccw fig.pivot pt)
       }
-  | LOCK_MARK -> failwith "Unexpected LOCK_MARK"
+  | NOP -> failwith "Unexpected NOP"
 
 

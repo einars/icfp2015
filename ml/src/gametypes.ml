@@ -6,10 +6,12 @@ type figure_t =
   ; pivot: cell_t
   }
 
-type move_t = MOVE_E | MOVE_W | MOVE_SE | MOVE_SW | TURN_CW | TURN_CCW | LOCK_MARK
+type move_t = MOVE_E | MOVE_W | MOVE_SE | MOVE_SW | TURN_CW | TURN_CCW | NOP
 
-type diff_t = LivePlacement of figure_t * move_t list
-  | LockedPlacement of figure_t * move_t list
+type ext_move_t = move_t * string
+
+type diff_t = LivePlacement of figure_t * ext_move_t list
+  | LockedPlacement of figure_t * ext_move_t list
   | ColumnDrop of int
   | Finish of bool
 

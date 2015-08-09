@@ -8,22 +8,24 @@ open Movement
 
 let s_of_pt pt = sprintf "[%d:%d]" (fst pt) (snd pt)
 
-let first_moves = [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW; MOVE_E ; MOVE_W ; TURN_CW ; TURN_CCW ]
+let first_moves = [ MOVE_SE ; MOVE_SW ; TURN_CW; TURN_CCW; MOVE_E ; MOVE_W ]
 
 let s_of_moves moves =
   let mcs = List.rev_map moves ~f:(function
-    | MOVE_W -> "p"
-    | MOVE_E -> "b"
-    | MOVE_SW -> "a"
-    | MOVE_SE -> "m"
-    | TURN_CW -> "q"
-    | TURN_CCW -> "k"
-    (*| LOCK_MARK -> ""*)
-    | LOCK_MARK -> ""
+    | _, s -> s
   ) in
   String.concat mcs
 ;;
 
+let blank_hash = Set.empty ~comparator:String.comparator
+
+let ignored fn = fun x -> ignore(fn x)
+
+
+
+type procesing_t = Finalizing of state_t | Running of state_t | Borkbork
+
+(*
 let s_of_moves_dbg moves =
   let mcs = List.rev_map moves ~f:(function
     | MOVE_W -> "<"
@@ -32,12 +34,11 @@ let s_of_moves_dbg moves =
     | MOVE_SE -> "\\"
     | TURN_CW -> "+"
     | TURN_CCW -> "-"
-    (*| LOCK_MARK -> ""*)
-    | LOCK_MARK -> " "
+    | NOP -> " "
   ) in
   String.concat mcs
 ;;
-
+*)
 
 let is_terminal_state state = match state.diff with
   | Finish _ :: _ -> true
@@ -134,7 +135,7 @@ let get_solution state =
   let append_diff = function
     | Finish _ -> ()
     | LockedPlacement (_, m) ->
-        out := "" :: (s_of_moves m) :: !out
+        out := (s_of_moves m) :: !out
     | LivePlacement (_, m) ->
         out := (s_of_moves m) :: !out
     | ColumnDrop col -> ()
@@ -147,12 +148,14 @@ let get_solution state =
 
 let print_state state =
 
+  (*
   let dbg_print_diff = function
     | Finish _ -> printf "EOF\n"
     | LockedPlacement (fig, m) -> printf "%s " (s_of_moves_dbg m)
     | LivePlacement (fig, m) -> printf "*%s " (s_of_moves_dbg m)
     | ColumnDrop col -> printf "(drop %d) " col
   in
+  *)
 
   let normal_print_diff = function
     | Finish _ -> ()
@@ -161,7 +164,7 @@ let print_state state =
     | ColumnDrop col -> ()
   in
 
-  let print_diff = dbg_print_diff in
+  let print_diff = normal_print_diff in
 
   printf "%d×%d ID=%d, all_figs=%d, remaining=%d, seed=%d\n" state.width state.height state.id (List.length state.figures) state.remaining state.initial_seed;
   for y = 0 to state.height - 1 do
@@ -173,10 +176,10 @@ let print_state state =
     done;
     printf "\n";
   done;
-  printf "\n%!";
+  printf "Moves: ";
 
   List.iter ~f:print_diff (List.rev state.diff);
-  (* printf "\n%s\n%!" (s_of_moves s.moves); *)
+  printf "\n%!";
   state
 ;;
 
@@ -240,7 +243,7 @@ let maybe_drop state =
 
 
 
-let process_live_placement state move (fig, moves) hashes diff =
+let process_live_placement state (move,c) (fig, moves) hashes =
 
   let translated_fig = moved_fig fig move in
   let fig_hash = figure_hash translated_fig in
@@ -251,45 +254,114 @@ let process_live_placement state move (fig, moves) hashes diff =
     if fig_touches_something state translated_fig.members then (
       Some (state, false)
     ) else (
-      Some (( { state with diff = (LivePlacement (translated_fig, (move :: moves) )) :: diff }), true)
+      Some (( { state with diff = (LivePlacement (translated_fig, ( (move,c) :: moves) )) :: (List.tl_exn state.diff) }), true)
     )
   )
 ;;
 
 
-let add_new_figure_hash hashes state =
+let hashes_updated_with_last_fig hashes state =
+  (* pick_new_or_finalize uzliek figūru, bet hašs netiek apdeitots *)
   begin match state.diff with
     | (LivePlacement (fig, _)) :: _ ->
-        hashes := Set.add !hashes (figure_hash fig)
-    | _ -> ()
-  end;
-  state
-
-let rec next_states accum state hashes = match state.diff with
-| [] -> next_states accum (pick_new_or_finalize state |> (add_new_figure_hash hashes) ) hashes
-| (Finish _)                      :: rest -> (state, LOCK_MARK) :: accum
-| (LockedPlacement _)             :: rest -> failwith "Unexpected LockedPlacement"
-| (ColumnDrop _)                  :: rest -> failwith "Unexpected ColumnDrop"
-| (LivePlacement (fig, p)) :: rest ->
-    let had_lock = ref false in
-
-    let tmp_accum = ref accum in
-
-    List.iter first_moves ~f:(
-      fun move -> match process_live_placement state move (fig, p) hashes rest with
-      | None -> ()
-      | Some (s, true) -> (* live placement going on, keep on doing it *)
-          tmp_accum := next_states !tmp_accum s hashes
-      | Some (s, false) ->
-          (* lock! append lockables to accum *)
-          if not !had_lock then (
-            had_lock := true;
-            tmp_accum := (state, move) :: !tmp_accum
-          )
-    );
-    !tmp_accum
+        Set.add hashes (figure_hash fig)
+    | _ -> hashes
+  end
 ;;
 
+let default_moves = [ MOVE_SE,"m" ; MOVE_SW, "a" ; TURN_CW, "q"; TURN_CCW, "k"; MOVE_E, "b" ; MOVE_W, "p" ]
+let default_stream () = default_moves
+
+let stream_of_word w =
+  let w = ref w in
+  let rec streamer () = match !w with
+    | [] -> default_stream()
+    | (NOP, c) :: rest -> w := rest; streamer ()
+    | m :: rest -> w := rest; [m]
+  in
+  streamer
+;;
+
+
+let apply_move state (move:ext_move_t) ref_hashes =
+  match state.diff with 
+    | (LivePlacement (fig, moves)) :: _ ->
+        if (fst move = NOP) then (
+          (* tikai apdeito movu sarakstu ar nopu *)
+          Running { state with diff = (LivePlacement (fig, ( move :: moves) )) :: (List.tl_exn state.diff) }
+        ) else (
+          let translated_fig = moved_fig fig (fst move) in
+          let fig_hash = figure_hash translated_fig in
+          if Set.mem !ref_hashes fig_hash then Borkbork else (
+            ref_hashes := Set.add !ref_hashes fig_hash;
+            if fig_touches_something state translated_fig.members then (
+              Finalizing state
+            ) else (
+              Running { state with diff = (LivePlacement (translated_fig, ( move :: moves) )) :: (List.tl_exn state.diff) }
+            )
+          )
+        )
+
+    | _ -> Borkbork
+;;
+
+let apply_power_word state word hashes =
+
+  let ref_hashes = ref hashes in
+
+  let rec apply_power_letter st = function
+    | [] -> Some (st, !ref_hashes)
+    | move :: rest -> (
+      match  apply_move st move ref_hashes with
+      | Borkbork -> None
+      | Finalizing st -> None
+      | Running st -> apply_power_letter st rest
+    )
+  in
+
+  apply_power_letter state word
+
+
+
+
+let process_state ?(power_words=[]) state =
+  (*
+   * state ir starta state, bet viņai ir jābūt aktīvam LivePlacement - iesp., pirmā figūra
+   * *)
+
+  let source_pool = ref [ state ] in
+  let target_pool = ref [] in
+  let hashes = ref blank_hash in
+
+  while !source_pool <> [] do
+    let pool = !source_pool in 
+    source_pool := [];
+    List.iter pool ~f:(fun state ->
+
+      (* izejam cauri spēka vārdiem un piefiksējam labus variantus *)
+      List.iter power_words ~f:(fun w ->
+        let unmodified_hash = !hashes in (* visi vārdi iet ar vienu un to pašu hašu, lai varētu iet paralēli *)
+        match apply_power_word state w unmodified_hash with
+        | None -> ()
+        | Some (word, hash) ->
+          source_pool := word :: !source_pool;
+          hashes := Set.union !hashes hash;
+      );
+
+      List.iter default_moves ~f:(fun m ->
+        match apply_move state m hashes with
+        | Finalizing s ->  target_pool := (s,m) :: !target_pool
+        | Running s ->  source_pool := s :: !source_pool
+        | Borkbork ->  ()
+      )
+
+    );
+
+    (* List.iter !source_pool ~f:(ignored print_state); *)
+    (* printf "\nHave %d in source pool\n%!" (List.length !source_pool); *)
+  done;
+
+  !target_pool
 
 
 
@@ -320,8 +392,8 @@ let take_json_cells json field = Yojson.Basic.Util.(
 
 let state_heuristic state =
 
-  let is_live = is_live_state state
-  and moved_pos = moved_fig_pos state in
+  (* let is_live = is_live_state state in *)
+  let moved_pos = moved_fig_pos state in
 
   let totes = ref 0 in
   (*
@@ -424,10 +496,8 @@ let states_of_json json = Yojson.Basic.Util.(
 
 let first_state_of_json something = states_of_json something |> List.hd_exn
 
-let ignored fn = fun x -> ignore(fn x)
-
-let lock_with_move (state,move) =
-  if move = LOCK_MARK then state
+let lock_with_move ((state:state_t),(move:ext_move_t)) =
+  if fst move = NOP then state
   else match state.diff with
   | (LivePlacement (fig, moves) :: rest) ->
       { state with diff = (LockedPlacement (fig, (move :: moves))) :: rest } |> maybe_drop |> pick_new_or_finalize
@@ -435,12 +505,10 @@ let lock_with_move (state,move) =
 ;;
 
 
-let rec put_figure_on_board_and_go (states:state_t list) : state_t =
-
-  let hashes = ref (Set.empty ~comparator:String.comparator) in
+let rec put_figure_on_board_and_go power_words (states:state_t list) : state_t =
 
   let all_finals_to_consider = 
-    List.fold states ~init:[] ~f:(fun accum state -> List.append accum (next_states [] state hashes))
+    List.fold states ~init:[] ~f:(fun accum state -> List.append accum (process_state ~power_words state ))
   in
 
   (* List.iter all_finals_to_consider ~f:(fun (s,m) -> ignore(print_state s)); *)
@@ -453,16 +521,34 @@ let rec put_figure_on_board_and_go (states:state_t list) : state_t =
   | Some s ->
       (* print_state s; *)
       if not (is_terminal_state s) then
-        put_figure_on_board_and_go next_states
+        put_figure_on_board_and_go power_words next_states
       else s
   )
 ;;
 
 
-let solve state =
+let move_of_char c = match c with
+  | 'p' | '\''| '!' | '.' | '0' | '3' -> MOVE_W, String.make 1 c
+  | 'b' | 'c' | 'e' | 'f' | 'y' | '2' -> MOVE_E, String.make 1 c
+  | 'a' | 'g' | 'h' | 'i' | 'j' | '4' -> MOVE_SW, String.make 1 c
+  | 'l' | 'm' | 'n' | 'o' | ' ' | '5' -> MOVE_SE, String.make 1 c
+  | 'd' | 'q' | 'r' | 'v' | 'z' | '1' -> TURN_CW, String.make 1 c
+  | 'k' | 's' | 't' | 'u' | 'w' | 'x' -> TURN_CCW, String.make 1 c
+  | _ -> NOP, String.make 1 c
+;;
+
+let process_power_word word = 
+  List.map ~f:move_of_char (List.rev (String.to_list_rev (String.lowercase word)))
+;;
+
+let process_power_words words = List.map words ~f:process_power_word
+;;
+
+
+let solve ?(power_words=[]) state =
   eprintf "Solving seed %04x\n%!" state.initial_seed;
   (* ignore(print_state state); *)
-  put_figure_on_board_and_go [ state ]
+  put_figure_on_board_and_go (process_power_words power_words) [ state |> pick_new_or_finalize ]
 ;;
 
 
