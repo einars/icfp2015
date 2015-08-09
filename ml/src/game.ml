@@ -13,8 +13,8 @@ let m_se = MOVE_SE, "m"
 let m_sw = MOVE_SW, "a"
 let m_cw = TURN_CW, "q"
 let m_cc = TURN_CCW, "k"
-let m_ww = MOVE_E, "b"
-let m_ee = MOVE_W, "p"
+let m_ee = MOVE_E, "b"
+let m_ww = MOVE_W, "p"
 
 let default_moves = [  m_se; m_sw; m_cw; m_cc; m_ww; m_ee ]
 let next_moves = function
@@ -370,10 +370,18 @@ let process_state ?(power_words=[]) state =
     List.iter pool ~f:(fun (state,last_move) ->
 
       (* very rarely try using the words *)
+      let unmodified_hash = !hashes in (* visi vārdi ies ar vienu un to pašu hašu, lai varētu iet paralēli *)
+
+      List.iter (next_moves last_move) ~f:(fun m ->
+        match apply_move state m hashes with
+        | Finalizing s ->  target_pool := (s,m) :: !target_pool
+        | Running s ->  source_pool := (s,(fst m)) :: !source_pool
+        | Borkbork ->  ()
+      );
+
       if (!iteration = 1 || !iteration = 3 || !iteration = 7 || !iteration = 11) then
       (* izejam cauri spēka vārdiem un piefiksējam labus variantus *)
       List.iter power_words ~f:(fun (full_w, w) ->
-        let unmodified_hash = !hashes in (* visi vārdi iet ar vienu un to pašu hašu, lai varētu iet paralēli *)
         match apply_power_word state w unmodified_hash with
         | None -> ()
         | Some (word, hash) ->
@@ -385,12 +393,6 @@ let process_state ?(power_words=[]) state =
           hashes := Set.union !hashes hash;
       );
 
-      List.iter (next_moves last_move) ~f:(fun m ->
-        match apply_move state m hashes with
-        | Finalizing s ->  target_pool := (s,m) :: !target_pool
-        | Running s ->  source_pool := (s,(fst m)) :: !source_pool
-        | Borkbork ->  ()
-      )
 
     );
 
@@ -500,7 +502,8 @@ let state_heuristic state =
       (*
       if y > !max_y then max_y := y;
       *)
-      totes := !totes + y;
+      totes := !totes + 2 * y;
+
       if (free ((x - 1),y)) && solid ((x - 2),y) then totes := !totes - 1;
       if (free ((x + 1),y)) && solid ((x + 2),y) then totes := !totes - 1;
 
