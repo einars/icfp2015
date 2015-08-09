@@ -245,6 +245,8 @@
       (push (append westward downwardE) patterns)
       (push (append eastward downwardW) patterns)
       (push (append westward downwardW) patterns))
+    (push downwardE patterns)
+    (push downwardW patterns)
     patterns))
 
 (defun try-all-moves (board)
