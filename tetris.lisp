@@ -259,14 +259,14 @@
   (second (board-stats board)))
 
 (defun remove-with-bad-holes (all count)
-  (remove-if (lambda (x) (> (hole-count x) count)) all))
+  (remove-if-not (lambda (x) (= (hole-count x) count)) all))
 
 (defun best-of (pool)
   (when pool
     (mapc #'count-holes pool)
     (let* ((by-hole-count (sort pool #'< :key #'hole-count))
 	   (best-count (hole-count (first by-hole-count)))
-	   (least-holes (remove-with-bad-holes pool best-count)))
+	   (least-holes (remove-with-bad-holes by-hole-count best-count)))
       (first (sort least-holes #'> :key #'get-board-height)))))
 
 (defun get-solution (board)
