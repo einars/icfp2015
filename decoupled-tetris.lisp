@@ -159,8 +159,7 @@
     (let ((match (match-single i nil path)))
       (when match
 	(push (glue (append bagage match)) *power-results*)
-	(gen-further match bagage (butlast match))
-	(gen-further match bagage (list (first match) (car i)))))))
+	(gen-further match bagage (butlast match))))))
 
 (defun bad-board (board)
   (or (null board)
