@@ -64,7 +64,7 @@
 	     (points (+ (score-size score-entry) clear-bonus))
 	     (line-bonus (if (and (not (zerop clear-bonus))
 				  (eql *last-clear-no* (1- *curr-unit-no*)))
-			     (floor (* points (1- *last-clear-lines*) 0.1))
+			     (floor (* (+ points *score*) (1- *last-clear-lines*) 0.1))
 			     0)))
 	(unless (zerop clear-bonus)
 	  (setf *last-clear-no* *curr-unit-no*

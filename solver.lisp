@@ -15,6 +15,8 @@
 (defvar *try-depth*)
 (defvar *last-clear*)
 
+(defvar *watershed*)
+
 (defun solve (number &key (with-gui t) (search-depth 0) try-depth)
   (let ((*search-depth* search-depth)
 	(*mapped-vertices* nil)
@@ -28,14 +30,25 @@
 		       :with-gui with-gui))))
 
 (defun solve1 (board)
-  (with-current-board board
-    (solve2)))
+  (ignore-errors
+    (with-current-board board
+      (let ((*watershed* 0))
+	(solve2)))))
 
 (defun solve2 ()
   (with-next-unit unit
     (let* ((*all-vertices* nil)
 	   (curr-vertice (make-vertice :unit unit))
 	   (best-vertice (find-best-vertice curr-vertice)))
+      (let ((highest-height *board-height*))
+	(dotimes (x *board-width*)
+	  (dotimes (y *board-height*)
+	    (when (and (pos-filled (cons x y))
+		       (< y highest-height))
+	      (setf highest-height y))))
+	(when (> highest-height *watershed*)
+	  (format t "~%Setting watershed ~A" highest-height)
+	  (setf *watershed* highest-height)))
       (if *with-gui*
 	  (apply-path (nreverse (get-path best-vertice)) (vertice-unit best-vertice) :apply-fun #'play-move)
 	  (apply-path (nreverse (get-path best-vertice)) (vertice-unit best-vertice)))
@@ -99,9 +112,9 @@
 	(mapped-vertices (smart-map start-vertice))
 	best-vertice-score)
     (setf *all-vertices* (remove-if-not #'vertice-placeable-p mapped-vertices))
-    (when *try-depth*
-      (setf *all-vertices* (sort *all-vertices* (lambda (a b) (> (vertice-distance a) (vertice-distance b))))))
-    (dolist (vertice (subseq *all-vertices* 0 (if *try-depth*
+    (when (and *try-depth* (eql depth 0))
+      (setf *all-vertices* (sort *all-vertices* (lambda (a b) (> (score-vertice a) (score-vertice b))))))
+    (dolist (vertice (subseq *all-vertices* 0 (if (and *try-depth* (eql depth 0))
 						  (min *try-depth* (length *all-vertices*))
 						  (length *all-vertices*))))
       (when (vertice-placeable-p vertice)
@@ -136,11 +149,12 @@
      (reduce (lambda (acc point)
 	       (+ acc
 		  (score-connected point)
-		  (* -2 (score-overhangs point))))
+		  (* 0 (score-overhangs point))))
 	     (cdr (vertice-unit vertice))
 	     :initial-value 0)
-     (* 1 (loop as point in (cdr (vertice-unit vertice))
-		maximize (cdr point)))))
+     (let ((high-point (loop as point in (cdr (vertice-unit vertice))
+			  maximize (cdr point))))
+       (- (expt (* 1.2 (abs (- (if (zerop *watershed*) *board-height* *watershed*) (cdar (vertice-unit vertice)) ))) 1.7)))))
 
 (defun score-connected (point)
   (loop as point in (list (move-unit (list point) :E)
@@ -159,14 +173,14 @@
 		  (< x *board-width*)
 		  (>= y 0)
 		  (< y *board-height*)
-		  (not (pos-filled (car point))))))))
+		  (not (pos-filled (car point)))))))
 
 (defun filled-or-walled (point)
   (destructuring-bind (x . y) point
     (cond
       ((< y 0) 0)
       ((or (< x 0)
-	   (>= x *board-width*)) (if (evenp y) 0.5 0.3))
+	   (>= x *board-width*)) (if (evenp y) 0.8 0.5))
       ((or (>= y *board-height*)
 	   (pos-filled point)) 1)
       (t 0))))
