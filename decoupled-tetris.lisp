@@ -86,8 +86,9 @@
 
 
 (defparameter *power-patterns*
+  '(
      ; height=1: length=3
-  '(((:SW)    . ("Ei!" :E :SW :W))
+    ((:SW)    . ("Ei!" :E :SW :W))
     ((:SE :W) . ("Ei!" :E :SW :W))
     ((:W :SE) . ("Ei!" :E :SW :W))
 
@@ -108,6 +109,17 @@
     ((:SE :SE :SW :SW) . ("Yuggothzz" :E :R- :SW :SW :SE :R- :SW :R+ :R+))
     ((:SW :SW :SE :SE) . ("Yuggothzz" :E :R- :SW :SW :SE :R- :SW :R+ :R+))
 
+     ; height=6: length=10
+    ((:SE :SW :SE :SW :SE :SE) .
+     ("Yogsothothzzz" :E :SE :SW :R- :SE :R- :SW :SE :R- :SW :R+ :R+ :R+))
+    ((:SE :SW :SE :SE :SW :SE) .
+     ("Yogsothothzzz" :E :SE :SW :R- :SE :R- :SW :SE :R- :SW :R+ :R+ :R+))
+    ((:SE :SE :SW :SE :SW :SE) .
+     ("Yogsothothzzz" :E :SE :SW :R- :SE :R- :SW :SE :R- :SW :R+ :R+ :R+))
+    ((:E :SE :SW :SE :SW :SE :SW) .
+     ("Yogsothothzzz" :E :SE :SW :R- :SE :R- :SW :SE :R- :SW :R+ :R+ :R+))
+    ((:SE :SW :SE :SW :SE :SW :E) .
+     ("Yogsothothzzz" :E :SE :SW :R- :SE :R- :SW :SE :R- :SW :R+ :R+ :R+))
     ))
 
 (defun match-start (word path)

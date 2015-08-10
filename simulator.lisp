@@ -9,6 +9,7 @@
   (list "ia! ia!"
 	"r'lyeh"
 	"yogsothoth"
+	"tsathoggua"
 	"yuggoth"
 	"ei!"))
 
