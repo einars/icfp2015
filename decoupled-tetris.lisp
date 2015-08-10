@@ -96,13 +96,9 @@
     ((:SW :SW :SW :W :SW :SW) . ("Ia! Ia!" :SW :SW :W :SE :SW :SW :W))
     ((:SW :SW :SW :SW :W :SW) . ("Ia! Ia!" :SW :SW :W :SE :SW :SW :W))
     ((:SW :SW :SW :SW :SW :W) . ("Ia! Ia!" :SW :SW :W :SE :SW :SW :W))
-    ))
 
-; "ia! ia!"
-; "r'lyeh"
-; "yogsothoth"
-; "yuggoth"
-; "ei!"
+    ((:SE :SE) . ("R'lyehx" :R+ :W :SE :E :E :SW :R-))
+    ))
 
 (defun match-start (word path)
   (cond ((null word) path)
