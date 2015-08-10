@@ -179,11 +179,32 @@
   (let ((*power-results* nil))
     (delete-if-not #'good-path (gen-powers path))))
 
+(defun get-path-height (path)
+  (loop as move in path
+     count (or (eql move :SE) (eql move :SW))))
+
+(defun power-goodness (w1 w2)
+  (not (let ((word1 (find-if #'stringp w1))
+	(word2 (find-if #'stringp w2))
+	found1 found2)
+    (loop as word in *found-power-words*
+       when (equalp word1 *found-power-words*) do (setf found1 t)
+       when (equalp word2 *found-power-words*) do (setf found2 t))
+    (cond
+      ((and found1 found2) (> (length word1) (length word2)))
+      (found1 t)
+      (found2 nil)
+      (t (> (/ (length word1) (get-path-height (cddr (find-if (lambda (pattern) (eql word1 (cadr pattern))) *power-patterns*))))
+	    (/ (length word2) (get-path-height (cddr (find-if (lambda (pattern) (eql word2 (cadr pattern))) *power-patterns*))))))))))
+
 (defun apply-path (path final-unit &key (apply-fun #'make-move))
   (format t "old-path:~A~%" path)
   (let ((power-list (make-power-patterns path)))
-    (when power-list (setf path (first (sort power-list #'> :key #'length)))))
-  (format t "new-path:~A~%~%" path)
+    (when power-list (setf path (first (sort power-list #'power-goodness)))))
+  (when (and (stringp (car path))
+	     (not (find (car path) *found-power-words*)))
+    (push (car path) *found-power-words*))
+  (format t "new-path:~A~%~%"  path)
   (setf *delta* nil)
   (dolist (move path)
     (setf *board* (funcall apply-fun *board* move)))

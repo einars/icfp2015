@@ -11,7 +11,8 @@
 	   :board-update :board-update-board :board-update-msg
 	   :continue-processing :done :done-board
 	   :convert-pos
-	   :*watershed*))
+	   :*watershed*
+	   :*found-power-words*))
 
 (in-package :icfp/state)
 
@@ -20,6 +21,7 @@
 (defvar *total-moves*)
 
 (defvar *watershed*)
+(defvar *found-power-words*)
 
 (define-condition board-update ()
   ((new-board :initarg :new-board

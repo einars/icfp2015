@@ -21,7 +21,8 @@
 	(*last-mapped-board* nil)
 	(*with-gui* with-gui)
 	(*try-depth* try-depth)
-	(*last-clear* nil))
+	(*last-clear* nil)
+	(*found-power-words* nil))
     (solve-problem number
 		   :solver (if with-gui
 			       (gen-simulator #'solve1)
