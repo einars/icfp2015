@@ -380,7 +380,7 @@ let process_state ?(power_words=[]) state =
         | Borkbork ->  ()
       );
 
-      if (!iteration mod 5 = 1) then
+      if (!iteration % 3 = 1) then
       (* izejam cauri spēka vārdiem un piefiksējam labus variantus *)
       List.iter power_words ~f:(fun (full_w, w) ->
         match apply_power_word state w unmodified_hash with
@@ -391,7 +391,7 @@ let process_state ?(power_words=[]) state =
             apply_power_word ~debug:true state w unmodified_hash;
             *)
           source_pool := (word,NOP) :: !source_pool;
-          hashes := Set.union !hashes hash;
+          hashes := Set.union !hashes hash; (* hmmm *)
       );
 
 
@@ -433,13 +433,6 @@ let state_heuristic state =
   let moved_pos, moved_perim = moved_fig_pos state in
 
 
-  let prefered_row () =
-    match Array.findi state.repr (fun i x -> x) with
-    | None -> state.height
-    | Some (i,_) -> (i / state.width)
-  in
-
-
   let pref_row =  state.height_hint in
 
 
@@ -472,11 +465,9 @@ let state_heuristic state =
   );
 
   List.iter moved_pos  ~f:( fun (x,y) ->
-      let pt = x,y in
-      (* printf "(totsing %d %d)\n" x y; *)
       let row_diff = abs (y - pref_row) in
       if (y < pref_row)    then totes := !totes - row_diff * 100
-      else if y = pref_row then totes := !totes + 10
+      else if y = pref_row then totes := !totes + 100
       else if y > pref_row then totes := !totes - row_diff
   );
 
