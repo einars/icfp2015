@@ -16,14 +16,14 @@ let m_cc = TURN_CCW, "k"
 let m_ee = MOVE_E, "b"
 let m_ww = MOVE_W, "p"
 
-let default_moves = [  m_se; m_sw; m_cw; m_cc; m_ww; m_ee ]
+let default_moves = [  m_ee ; m_ww; m_se; m_sw; m_cw; m_cc; ]
 let next_moves = function
-  | MOVE_E   -> [ m_se ; m_sw ; m_cw ; m_cc ; m_ee        ]
-  | MOVE_W   -> [ m_se ; m_sw ; m_cw ; m_cc ;        m_ww ]
-  | MOVE_SE  -> [ m_se ; m_sw ; m_cw ; m_cc ; m_ee ; m_ww ]
-  | MOVE_SW  -> [ m_se ; m_sw ; m_cw ; m_cc ; m_ee ; m_ww ]
-  | TURN_CW  -> [ m_se ; m_sw ; m_cw ;        m_ee ; m_ww ]
-  | TURN_CCW -> [ m_se ; m_sw ;        m_cc ; m_ee ; m_ww ]
+  | MOVE_E   -> [ m_ee        ; m_se ; m_sw ; m_cw ; m_cc ; ]
+  | MOVE_W   -> [        m_ww ; m_se ; m_sw ; m_cw ; m_cc ; ]
+  | MOVE_SE  -> [ m_ee ; m_ww ; m_se ; m_sw ; m_cw ; m_cc ; ]
+  | MOVE_SW  -> [ m_ee ; m_ww ; m_se ; m_sw ; m_cw ; m_cc ; ]
+  | TURN_CW  -> [ m_ee ; m_ww ; m_se ; m_sw ; m_cw ;        ]
+  | TURN_CCW -> [ m_ee ; m_ww ; m_se ; m_sw ;        m_cc ; ]
   | NOP      -> default_moves
 
 let s_of_moves moves =
@@ -317,10 +317,10 @@ let apply_move state (move:ext_move_t) ref_hashes =
           let translated_fig = moved_fig fig (fst move) in
           let fig_hash = figure_hash translated_fig in
           if Set.mem !ref_hashes fig_hash then Borkbork else (
-            ref_hashes := Set.add !ref_hashes fig_hash;
             if fig_touches_something state translated_fig.members then (
               (Finalizing state) (* |> global_dup_removal *)
             ) else (
+              ref_hashes := Set.add !ref_hashes fig_hash;
               Running { state with diff = (LivePlacement (translated_fig, ( move :: moves) )) :: (List.tl_exn state.diff) }
             )
           )
@@ -396,12 +396,7 @@ let process_state ?(power_words=[]) state =
 
 
     );
-
-    (* List.iter !source_pool ~f:(ignored print_state); *)
-    (* printf "\nHave %d in source pool\n%!" (List.length !source_pool); *)
   done;
-
-  (* eprintf "process_state finished, target_pool = %d\n%!" (List.length !target_pool); *)
 
   !target_pool
 
@@ -456,8 +451,8 @@ let state_heuristic state =
   List.iter moved_pos ~f:(fun (x,y) ->
     (* ineffective *)
     let n_filled = ref 0 in
-    for i = 0 to state.width do
-      if pt_solid state (i,y) then n_filled := !n_filled + 1;
+    for i = 0 to state.width - 1 do
+      if pt_solid_live state (i,y) then n_filled := !n_filled + 1;
     done;
     if !n_filled = state.width then lines_made := !lines_made + 1;
   );
@@ -478,142 +473,6 @@ let state_heuristic state =
       else if y > pref_row then totes := !totes - row_diff
   );
 
-  (* printf "TOTES = [[[ %d ]]]\n" !totes; *)
-
-  (* print_state state; *)
-
-      (*
-      if y > !max_y then max_y := y;
-      *)
-
-
-
-
-  (*
-  for y = state.height - 1 downto 0 do
-    let tot = ref 0 in
-    for x = 0 to state.width - 1 do
-      if pt_solid_live state (x,y) then tot := !tot + 1;
-    done;
-    if (!tot = state.width) then (
-      totes := !totes + 1000;
-    )
-  done;
-  *)
-
-  (*
-
-  let max_interesting_row = ref (state.height - 1) in
-  for y = state.height - 1 downto 0 do
-    let tot = ref 0 in
-    for x = 0 to state.width - 1 do
-      if pt_solid_live state (x,y) then tot := !tot + 1;
-    done;
-    if (!tot = state.width) then (
-      totes := !totes + 1000;
-      max_interesting_row := y - 1;
-    )
-  done;
-
-  totes := !totes + 1000 * List.count state.diff ~f:(function
-    | ColumnDrop _ -> true
-    | _ -> false
-  );
-
-
-
-
-  let out_of_bounds (x,y) =
-    x < 0 || y < 0 || x >= state.width || y >= !max_interesting_row
-  in
-
-  let strapon pt =
-    let rec r_strapon pt penalize accum func = 
-      if out_of_bounds pt then accum else
-      if pt_solid_live state pt 
-      then r_strapon (func pt) true accum func
-      else r_strapon (func pt) false (if penalize then accum + 1 else accum) func
-    in
-      + 3 * r_strapon pt false 0 move_se
-  in
-
-
-  let penalty = ref 0 in
-  for x = 0 to state.width - 1 do
-    penalty := !penalty + strapon (x,0)
-  done;
-  for y = 0 to !max_interesting_row do
-    penalty := !penalty + strapon (0,y)
-  done;
-
-  totes := !totes - !penalty;
-
-
-  let solid = pt_solid_live state
-  and free = (fun pt -> not (pt_solid_live state pt)) in
-
-
-  let max_y = ref (0) in
-  List.iter moved_pos  ~f:(
-    fun (x,y) ->
-      let pt = x,y in
-
-      let sw = move_sw pt and se = move_se pt in
-      let swsw = move_sw sw and sese = move_se se in
-
-      (*
-      if y > !max_y then max_y := y;
-      *)
-      if y >= pref_row 
-      then totes := !totes + (state.height - y)(* + 1 * (state.height - (y - pref_row)) *)
-      else totes := !totes - state.height * (pref_row - y);
-
-      (*
-      if (free ((x - 1),y)) && solid ((x - 2),y) then totes := !totes - 1;
-      if (free ((x + 1),y)) && solid ((x + 2),y) then totes := !totes - 1;
-      *)
-
-      if (free sw) && (solid (move_e sw)) && (solid (move_w sw)) then totes := !totes - 2;
-      if (free se) && (solid (move_e se)) && (solid (move_w se)) then totes := !totes - 2;
-
-      (*
-      if (free sw) && (free se) then totes := !totes - 2;
-      *)
-
-      if (free sw) && (free swsw) && (solid (move_e sw)) && (solid (move_w sw))
-      &&                             (solid (move_e swsw)) && (solid (move_w swsw))
-      then totes := !totes - 4;
-
-      if (free se) && (free sese) && (solid (move_e se)) && (solid (move_w se))
-      &&                             (solid (move_e sese)) && (solid (move_w sese))
-      then totes := !totes - 4;
-
-  );
-  totes := !totes + !max_y;
-  *)
-
-
-  (*
-
-  List.iter moved_pos  ~f:(
-    fun pt ->
-      (*
-      if (not (pt_solid_live state (move_nw pt))) then totes := !totes -1;
-      if (not (pt_solid_live state (move_ne pt))) then totes := !totes -1;
-      *)
-
-      if (not (pt_solid_live state (move_sw pt))) then totes := !totes -4;
-      if (not (pt_solid_live state (move_se pt))) then totes := !totes -4;
-      if (not (pt_solid_live state (move_e pt))) then totes := !totes -2;
-      if (not (pt_solid_live state (move_w pt))) then totes := !totes -2;
-      totes := !totes + 5 * (snd pt)
-  );
-  *)
-
-  (*
-  print_state state |> ignore;
-  printf "\nHeur %d\n" !totes |> ignore;
-  *)
   !totes
 ;;
 
