@@ -182,13 +182,23 @@
   (loop as move in path
      count (or (eql move :SE) (eql move :SW))))
 
-(defun power-goodness (w1 w2)
+(defun power-goodness (path)
+  (let ((found-words (remove-if-not #'stringp path)))
+    (+ (loop as word in found-words
+	  sum (length word))
+       (loop as word in (remove-duplicates found-words)
+	  sum (if (find word *found-power-words* :test 'equalp)
+		  0
+		  (* 100 (length word)))))))
+
+(defun power-goodnesszz (w1 w2)
+  
   (not (let ((word1 (find-if #'stringp w1))
 	(word2 (find-if #'stringp w2))
 	found1 found2)
     (loop as word in *found-power-words*
-       when (equalp word1 *found-power-words*) do (setf found1 t)
-       when (equalp word2 *found-power-words*) do (setf found2 t))
+       when (equalp word1 word) do (setf found1 t)
+       when (equalp word2 word) do (setf found2 t))
     (cond
       ((and found1 found2) (> (length word1) (length word2)))
       (found1 t)
@@ -199,11 +209,11 @@
 (defun apply-path (path final-unit &key (apply-fun #'make-move))
   (format t "old-path:~A~%" path)
   (let ((power-list (make-power-patterns path)))
-    (when power-list (setf path (first (sort power-list #'power-goodness)))))
-  (when (and (stringp (car path))
-	     (not (find (car path) *found-power-words*)))
-    (push (car path) *found-power-words*))
-  (format t "new-path:~A~%~%"  path)
+    (when power-list (setf path (first (sort power-list #'> :key #'power-goodness)))))
+  (format t "new-path (~A) :~A~%~%"  (power-goodness path) path)
+  (dolist (word (remove-if-not #'stringp path))
+    (unless (find word *found-power-words*)
+      (push word *found-power-words*)))
   (setf *delta* nil)
   (dolist (move path)
     (setf *board* (funcall apply-fun *board* move)))
