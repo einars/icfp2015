@@ -193,9 +193,10 @@
 (defun make-move (board move)
   (let* ((new-board (copy-board board))
 	 (next (copy-piece (last-move board))))
+    (push move (board-cmd new-board))
+    (when (stringp move) (return-from make-move new-board))
     (setf (piece-offset next) (copy-pos (piece-offset next)))
     (push next (board-pieces new-board))
-    (push move (board-cmd new-board))
     (case move
       (:W  (adjust-piece-offset next -1 0 #'null))
       (:E  (adjust-piece-offset next  1 0 #'null))

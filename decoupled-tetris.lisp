@@ -84,7 +84,7 @@
 
 
 (defparameter *power-patterns*
-  '(((:SW) . (:E :SW :W))))
+  '(((:SW) . ("Ei!" :E :SW :W))))
 
 (defun match-start (word path)
   (cond ((null word) path)
