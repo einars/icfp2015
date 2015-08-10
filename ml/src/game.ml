@@ -38,7 +38,7 @@ let blank_hash = Set.empty ~comparator:String.comparator
 let ignored fn = fun x -> ignore(fn x)
 
 
-let update_height_hint state = 
+let update_height_hint state =
   let pref_row = ref (
     match Array.findi state.repr (fun i x -> x) with
     | None -> state.height
@@ -54,7 +54,7 @@ let update_height_hint state =
 ;;
 
 
-  
+
 
 
 type procesing_t = Finalizing of state_t | Running of state_t | Borkbork
@@ -308,7 +308,7 @@ let initial_hash state =
 
 
 let apply_move state (move:ext_move_t) ref_hashes =
-  match state.diff with 
+  match state.diff with
     | (LivePlacement (fig, moves)) :: _ ->
         if (fst move = NOP) then (
           (* tikai apdeito movu sarakstu ar nopu *)
@@ -366,7 +366,7 @@ let process_state ?(power_words=[]) state =
   while !source_pool <> [] do
     iteration := !iteration + 1;
     (* eprintf "process_state source_pool = %d\n%!" (List.length !source_pool); *)
-    let pool = !source_pool in 
+    let pool = !source_pool in
     source_pool := [];
     List.iter pool ~f:(fun (state,last_move) ->
 
@@ -471,6 +471,37 @@ let state_heuristic state =
       else if y > pref_row then totes := !totes - row_diff
   );
 
+  let solid = pt_solid_live state
+  and free = (fun pt -> not (pt_solid_live state pt)) in
+
+  List.iter moved_pos  ~f:(
+    fun (x,y) ->
+      let pt = x,y in
+
+      let sw = move_sw pt and se = move_se pt in
+      let swsw = move_sw sw and sese = move_se se in
+
+      (*
+      if (free ((x - 1),y)) && solid ((x - 2),y) then totes := !totes - 1;
+      if (free ((x + 1),y)) && solid ((x + 2),y) then totes := !totes - 1;
+      *)
+
+      if (free sw) && (solid (move_e sw)) && (solid (move_w sw)) then totes := !totes - 2;
+      if (free se) && (solid (move_e se)) && (solid (move_w se)) then totes := !totes - 2;
+
+      (*
+      if (free sw) && (free se) then totes := !totes - 2;
+      *)
+
+      if (free sw) && (free swsw) && (solid (move_e sw)) && (solid (move_w sw))
+      &&                             (solid (move_e swsw)) && (solid (move_w swsw))
+      then totes := !totes - 4;
+
+      if (free se) && (free sese) && (solid (move_e se)) && (solid (move_w se))
+      &&                             (solid (move_e sese)) && (solid (move_w sese))
+      then totes := !totes - 4;
+  );
+
   !totes
 ;;
 
@@ -495,12 +526,12 @@ end)
 
 let blank_pointset = Set.empty ~comparator:Pt.comparator
 
-let make_perimeter cells = 
+let make_perimeter cells =
 
   let with_point pt set = Set.add set pt in
 
   let rec rec_gather accum = function
-    | pt :: rest -> 
+    | pt :: rest ->
         rec_gather (
         with_point (move_e pt) (
         with_point (move_w pt) (
@@ -605,7 +636,7 @@ let lock_with_move ((state:state_t),(move:ext_move_t)) =
 
 let rec put_figure_on_board_and_go depth power_words (states:state_t list) : state_t =
 
-  let all_finals_to_consider = 
+  let all_finals_to_consider =
     List.fold states ~init:[] ~f:(fun accum state -> List.append accum (process_state ~power_words state ))
   in
 
@@ -617,7 +648,7 @@ let rec put_figure_on_board_and_go depth power_words (states:state_t list) : sta
   (match List.hd next_states with
   | None -> failwith "ok"
   | Some s ->
-      if s.sourcelength <> 100 
+      if s.sourcelength <> 100
       then eprintf "\r%3d%% %d / %d%!" (depth * 100 / s.sourcelength) depth s.sourcelength
       else eprintf "\r%3d%%%!" depth;
 
@@ -642,7 +673,7 @@ let move_of_char c = match c with
   | _ -> NOP, String.make 1 c
 ;;
 
-let process_power_word word = 
+let process_power_word word =
   word, List.map ~f:move_of_char (List.rev (String.to_list_rev (String.lowercase word)))
 ;;
 
