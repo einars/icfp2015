@@ -6,26 +6,11 @@
 (in-package :icfp/simulator)
 
 (defparameter *power-words*
-  (list "Ei!"
-	"Lovecraft"
-	"Ph'nglui"
-	"Cthulhu"
-	"Wgah'nagl"
-	"Deep Ones"
-	"fhtagn"
-	"Crowley"
-	"Old Ones"
-	"Serious"
-	"something"
-	"Vancouver"
-	"Arlyeh"
-	"Yuggoth"
-	"Aleister"
-	"Davar"
-	"Azathoth"
-	"Ia! Ia!"
-	"R'lyeh"
-	"BigBoote"))
+  (list "ia! ia!"
+	"r'lyeh"
+	"yogsothoth"
+	"yuggoth"
+	"ei!"))
 
 (defvar *last-log*)
 (defvar *score*)
