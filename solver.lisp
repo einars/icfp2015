@@ -22,16 +22,20 @@
 	(*with-gui* with-gui)
 	(*try-depth* try-depth)
 	(*last-clear* nil))
-    (if with-gui
-	(solve-problem number
-		       :solver (gen-simulator #'solve1)
-		       :with-gui with-gui))))
+    (solve-problem number
+		   :solver (if with-gui
+			       (gen-simulator #'solve1)
+			       (lambda (id seed board with-gui)
+				 (declare (ignore id seed with-gui))
+				 (solve1 board)))
+		   :with-gui with-gui)))
 
 (defun solve1 (board)
-  (ignore-errors
+  (handler-case
     (with-current-board board
       (let ((*watershed* 0))
-	(solve2)))))
+	(solve2)))
+    (done (c) (done-board c))))
 
 (defun solve2 ()
   (with-next-unit unit
@@ -66,7 +70,6 @@
 (defun smart-map (start-vertice)
   (setf *last-mapped-board* decoupled-tetris::*base-board*)
 	(setf *mapped-vertices* (map-paths start-vertice))
-	(show-placements *mapped-vertices*)
 	*mapped-vertices*)
 
 (defun find-removed-vertices (vertices removed-units)

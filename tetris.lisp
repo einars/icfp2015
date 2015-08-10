@@ -429,7 +429,7 @@
       (run-gui board (lambda () (get-solution board)))))
 
 (defun default-solver (id seed board with-gui)
-  (format-solution id seed (solution-with-gui board with-gui)))
+  (solution-with-gui board with-gui))
 
 (defun solve-problem (number &key with-gui (solver #'default-solver))
   (let* ((data (read-problem number))
@@ -446,7 +446,8 @@
       (let ((*seed* source-seed))
 	(let ((*move-sequence* (generate-move-sequence)))
 	  (init-board-pieces new-board (aref *move-sequence* 0))
-	  (funcall solver id source-seed new-board with-gui))))))
+	  (let ((result (funcall solver id source-seed new-board with-gui)))
+	    (format-solution id source-seed result)))))))
 
 (defun save-problem (number &key with-gui (solver #'default-solver))
   (with-open-file  (*out* "test.json" :direction :output :if-exists :supersede)

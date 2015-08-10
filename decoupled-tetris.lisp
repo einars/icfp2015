@@ -28,11 +28,13 @@
      ,@body))
 
 (defmacro with-next-unit (unit-var &body body)
-  `(let* ((*current-unit-no* (1+ *current-unit-no*))
-	  (piece (aref *units* (aref *move-sequence* *current-unit-no*)))
-	  (,unit-var (cons (adjust-pos (piece-pivot piece) (piece-offset piece))
-			   (active-cells piece))))
-     ,@body))
+  `(if (>= (1+ *current-unit-no*) (length *move-sequence*))
+       (signal 'done :board *board*)
+       (let* ((*current-unit-no* (1+ *current-unit-no*))
+	      (piece (aref *units* (aref *move-sequence* *current-unit-no*)))
+	      (,unit-var (cons (adjust-pos (piece-pivot piece) (piece-offset piece))
+			       (active-cells piece))))
+	 ,@body)))
 
 (defmacro with-unit-applied (unit &body body)
   `(let* ((*delta* (cons ,(copy-tree unit) *delta*))

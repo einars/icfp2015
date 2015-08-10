@@ -9,7 +9,7 @@
 	   :piece-turn :piece-number :piece-config :board-log :board-lines
 	   :empty-grid :empty-board :copy-board :board-cmd :board-stats
 	   :board-update :board-update-board :board-update-msg
-	   :continue-processing
+	   :continue-processing :done :done-board
 	   :convert-pos
 	   :*watershed*))
 
@@ -72,3 +72,6 @@
 
 (defun empty-board ()
   (make-board :grid (empty-grid)))
+
+(define-condition done ()
+  ((board :accessor done-board :initarg :board)))

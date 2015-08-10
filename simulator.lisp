@@ -39,9 +39,6 @@
 (defvar *found-words*)
 (defvar *last-power-bonus*)
 
-(define-condition done ()
-  ())
-
 (defun read-simulation (file)
   (with-open-file (problem file)
     (json:decode-json problem)))
