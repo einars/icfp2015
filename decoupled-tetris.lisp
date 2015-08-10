@@ -120,6 +120,19 @@
      ("Yogsothothzzz" :E :SE :SW :R- :SE :R- :SW :SE :R- :SW :R+ :R+ :R+))
     ((:SE :SW :SE :SW :SE :SW :E) .
      ("Yogsothothzzz" :E :SE :SW :R- :SE :R- :SW :SE :R- :SW :R+ :R+ :R+))
+
+    ((:SE :SW :SW :SW :SW :SW) .
+     ("zzzzTsathoggua" :R+ :R+ :R+ :R+ :R- :R- :SW :R- :SW :SE :SW :SW :R- :SW))
+    ((:SW :SE :SW :SW :SW :SW) .
+     ("zzzzTsathoggua" :R+ :R+ :R+ :R+ :R- :R- :SW :R- :SW :SE :SW :SW :R- :SW))
+    ((:SW :SW :SE :SW :SW :SW) .
+     ("zzzzTsathoggua" :R+ :R+ :R+ :R+ :R- :R- :SW :R- :SW :SE :SW :SW :R- :SW))
+    ((:SW :SW :SW :SE :SW :SW) .
+     ("zzzzTsathoggua" :R+ :R+ :R+ :R+ :R- :R- :SW :R- :SW :SE :SW :SW :R- :SW))
+    ((:SW :SW :SW :SW :SE :SW) .
+     ("zzzzTsathoggua" :R+ :R+ :R+ :R+ :R- :R- :SW :R- :SW :SE :SW :SW :R- :SW))
+    ((:SW :SW :SW :SW :SW :SE) .
+     ("zzzzTsathoggua" :R+ :R+ :R+ :R+ :R- :R- :SW :R- :SW :SE :SW :SW :R- :SW))
     ))
 
 (defun match-start (word path)
