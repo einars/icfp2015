@@ -29,5 +29,6 @@ type state_t =
   ; diff: diff_t list
   ; repr: bool array
   ; height_hint: int
+  ; death_points: cell_t list
 }
 

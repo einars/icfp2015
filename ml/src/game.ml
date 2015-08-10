@@ -46,11 +46,11 @@ let update_height_hint state =
   ) in
 
   List.iter state.diff ~f:(function
-    | ColumnDrop n -> pref_row := max n !pref_row
+    | ColumnDrop n -> pref_row := max (n + 1) !pref_row
     | _ -> ()
   );
 
-  { state with height_hint = max state.height_hint !pref_row }
+  { state with height_hint = min (state.height - 1) (max state.height_hint !pref_row) }
 ;;
 
 
@@ -225,16 +225,16 @@ let fig_touches_something state pts =
 
 
 let pick_new_or_finalize state =
-  if state.remaining = 0 then
+  if state.remaining = 0 then (
     { state with diff = (Finish true) :: state.diff }
-  else
+  ) else
     let n, next_seed = next_random state.seed in
     let n_fig = (n mod (List.length state.figures)) in
     let fig = List.nth_exn state.figures n_fig in
 
-    if fig_touches_something state fig.members then
+    if fig_touches_something state fig.members then (
       { state with diff = (Finish true) :: state.diff }
-    else
+    ) else
       { state with seed = next_seed; remaining = state.remaining - 1; diff = (LivePlacement (fig, [])) :: state.diff }
 ;;
 
@@ -445,17 +445,24 @@ let state_heuristic state =
 
   let totes = ref 0 in
 
-  List.iter moved_perim ~f:(fun pt -> if pt_solid state pt then totes := !totes + 1);
+  List.iter moved_perim ~f:(fun pt -> if pt_solid state pt then totes := !totes + (state.height - (snd pt)));
+  (* List.iter moved_perim ~f:(fun pt -> if not (pt_solid state pt) then totes := !totes - (state.height - (snd pt))); *)
 
   let lines_made = ref 0 in
   List.iter moved_pos ~f:(fun (x,y) ->
-    (* ineffective *)
+
+    if List.mem state.death_points (x,y) then (
+      totes := !totes - 100;
+    );
+
+    (* ineffective and not entirely correct *)
     let n_filled = ref 0 in
     for i = 0 to state.width - 1 do
       if pt_solid_live state (i,y) then n_filled := !n_filled + 1;
     done;
     if !n_filled = state.width then lines_made := !lines_made + 1;
   );
+
   if !lines_made > 0 then (
     (*
     printf "Lines made %d\n" !lines_made;
@@ -468,8 +475,8 @@ let state_heuristic state =
       let pt = x,y in
       (* printf "(totsing %d %d)\n" x y; *)
       let row_diff = abs (y - pref_row) in
-      if (y < pref_row)    then totes := !totes - row_diff * 5
-      else if y = pref_row then totes := !totes + 30
+      if (y < pref_row)    then totes := !totes - row_diff * 100
+      else if y = pref_row then totes := !totes + 10
       else if y > pref_row then totes := !totes - row_diff
   );
 
@@ -512,10 +519,25 @@ let make_perimeter cells =
         with_point (move_nw pt) accum)))))) rest
     | [] -> accum
   in
+
+  let rec rec_remove accum = function
+    | pt :: rest -> rec_remove (Set.remove accum pt) rest
+    | _ -> accum
+  in
   (* todo: remove figure-points *)
-  Set.to_list ( rec_gather blank_pointset cells )
+  Set.to_list (rec_remove ( rec_gather blank_pointset cells ) cells)
 ;;
 
+
+let make_death_points state =
+
+  let rec gather_points accum = function
+    | fig :: rest -> gather_points (Set.of_list ~comparator:Pt.comparator fig.members) rest
+    | _ -> accum
+  in
+
+  { state with death_points = Set.to_list (gather_points blank_pointset state.figures) }
+;;
 
 
 let make_figure json_fig =
@@ -566,7 +588,8 @@ let states_of_json json = Yojson.Basic.Util.(
     diff = [];
     repr = make_initial_repr w h filled;
     height_hint = 0;
-  } |> readjust_figures |> update_height_hint in
+    death_points = [];
+  } |> readjust_figures |> update_height_hint |> make_death_points in
 
   List.map source_seeds ~f:(fun (seed) ->
     { base_state with
