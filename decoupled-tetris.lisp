@@ -5,6 +5,7 @@
 	   :with-next-unit
 	   :with-unit-applied
 	   :move-unit
+	   :board-rank
 	   :apply-path
 	   :legal-position-p
 	   :last-application-deleted-rows
@@ -82,7 +83,58 @@
       (not (zerop (aref *base-board* x y))))))
 
 
+(defparameter *power-patterns*
+  '(((:SW) . (:E :SW :W))))
+
+(defun match-start (word path)
+  (cond ((null word) path)
+	((or (null path) (not (eq (first word) (first path)))) 'fail)
+	(t (match-start (rest word) (rest path)))))
+
+(defun match-single (pattern head tail)
+  (let ((match (match-start (car pattern) tail)))
+    (cond ((null tail) nil)
+	  ((consp match) (list (nreverse head) (cdr pattern) match))
+	  (t (match-single pattern (cons (first tail) head) (rest tail))))))
+
+(defvar *power-results*)
+
+(defun glue (lst)
+  (apply #'append lst))
+
+(defun gen-further (match bagage tail)
+  (gen-powers (first (last match)) (append bagage tail)))
+
+(defun gen-powers (path &optional (bagage nil))
+  (dolist (i *power-patterns* *power-results*)
+    (let ((match (match-single i nil path)))
+      (when match
+	(push (glue (append bagage match)) *power-results*)
+	(gen-further match bagage (butlast match))
+	(gen-further match bagage (list (first match) (car i)))))))
+
+(defun bad-board (board)
+  (or (null board)
+      (board-done board)
+      (not (= (board-rank board) (board-rank *board*)))))
+
+(defun bad-path (path board)
+  (cond ((bad-board board))
+	((null path) nil)
+	(t (bad-path (rest path) (make-move board (first path))))))
+
+(defun good-path (path)
+  (not (bad-path path *board*)))
+
+(defun make-power-patterns (path)
+  (let ((*power-results* nil))
+    (delete-if-not #'good-path (gen-powers path))))
+
 (defun apply-path (path final-unit &key (apply-fun #'make-move))
+  (format t "old-path:~A~%" path)
+  (let ((power-list (make-power-patterns path)))
+    (when power-list (setf path (first (sort power-list #'> :key #'length)))))
+  (format t "new-path:~A~%~%" path)
   (setf *delta* nil)
   (dolist (move path)
     (setf *board* (funcall apply-fun *board* move)))

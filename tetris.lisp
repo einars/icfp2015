@@ -5,6 +5,7 @@
 	   :get-next-board
 	   :update-gui
 	   :get-item
+	   :board-rank
 	   :make-move
 	   :*move-sequence*
 	   :*units*))
