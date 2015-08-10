@@ -122,9 +122,10 @@
     next-board))
 
 (defun calc-power-bonus ()
-  (let ((power-bonus 0))
+  (let ((power-bonus 0)
+	(fw-move (reverse *last-full-move*)))
     (dolist (power-word *power-moves*)
-      (let ((repeats (find-ocurrences power-word *last-full-move*)))
+      (let ((repeats (find-ocurrences power-word fw-move)))
 	(incf power-bonus (* 2 repeats (length power-word)))
 	(when (and (> repeats 0)
 		   (not (find power-word *found-words*)))
