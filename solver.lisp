@@ -15,8 +15,6 @@
 (defvar *try-depth*)
 (defvar *last-clear*)
 
-(defvar *watershed*)
-
 (defun solve (number &key (with-gui t) (search-depth 0) try-depth)
   (let ((*search-depth* search-depth)
 	(*mapped-vertices* nil)
@@ -47,7 +45,6 @@
 		       (< y highest-height))
 	      (setf highest-height y))))
 	(when (> highest-height *watershed*)
-	  (format t "~%Setting watershed ~A" highest-height)
 	  (setf *watershed* highest-height)))
       (if *with-gui*
 	  (apply-path (nreverse (get-path best-vertice)) (vertice-unit best-vertice) :apply-fun #'play-move)
@@ -67,40 +64,10 @@
       (cons move (get-path backlink)))))
 
 (defun smart-map (start-vertice)
-  (if (and nil (eql *last-mapped-board* decoupled-tetris::*base-board*)
-	   (loop as delta in decoupled-tetris::*delta*
-	      never (numberp delta)))
-      (let ((new-map (remap-with-vertices-removed
-		      (mapcar (lambda (vertice)
-				(with-slots (visited distance index unit placeable-p closest-vertice force-recalc) vertice
-				  (make-vertice :visited visited
-						:distance distance
-						:index nil
-						:unit unit
-						:placeable-p placeable-p
-						:closest-vertice nil
-						:force-recalc t)))
-			      *mapped-vertices*)
-		      (find-removed-vertices *mapped-vertices* decoupled-tetris::*delta*))))
-	(show-placements new-map)
-	new-map)
-      (progn
-	(setf *last-mapped-board* decoupled-tetris::*base-board*)
+  (setf *last-mapped-board* decoupled-tetris::*base-board*)
 	(setf *mapped-vertices* (map-paths start-vertice))
 	(show-placements *mapped-vertices*)
-	*mapped-vertices*)))
-
-(defun show-placements (new-map)
-  #+nil(let ((new-board (make-array (list *board-width* *board-height*) :initial-element 0))
-	(counter 0))
-    (dolist (vertice new-map)
-      (when (vertice-placeable-p vertice)
-	(incf counter)
-	(dolist (point (cdr (vertice-unit vertice)))
-	  (setf (aref new-board (car point) (cdr point)) 1))))
-    (format t "~%~A" counter)
-    (gui::redraw-board (state::make-board :grid new-board))
-    (sleep 0.5)))
+	*mapped-vertices*)
 
 (defun find-removed-vertices (vertices removed-units)
   (loop as vertice in vertices
@@ -130,8 +97,6 @@
 		    (> score best-vertice-score))
 	    (setf best-vertice vertice
 		  best-vertice-score score)))))
-    (when (zerop depth)
-      (format t "~%~A" best-vertice-score))
     (values best-vertice best-vertice-score)))
 
 
@@ -154,6 +119,7 @@
 	     :initial-value 0)
      (let ((high-point (loop as point in (cdr (vertice-unit vertice))
 			  maximize (cdr point))))
+       (declare (ignorable high-point))
        (- (expt (* 1.2 (abs (- (if (zerop *watershed*) *board-height* *watershed*) (cdar (vertice-unit vertice)) ))) 1.7)))))
 
 (defun score-connected (point)

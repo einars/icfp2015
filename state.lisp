@@ -10,13 +10,16 @@
 	   :empty-grid :empty-board :copy-board :board-cmd :board-stats
 	   :board-update :board-update-board :board-update-msg
 	   :continue-processing
-	   :convert-pos))
+	   :convert-pos
+	   :*watershed*))
 
 (in-package :icfp/state)
 
 (defvar *board-width*)
 (defvar *board-height*)
 (defvar *total-moves*)
+
+(defvar *watershed*)
 
 (define-condition board-update ()
   ((new-board :initarg :new-board

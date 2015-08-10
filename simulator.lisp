@@ -5,6 +5,28 @@
 
 (in-package :icfp/simulator)
 
+(defparameter *power-words*
+  (list "Ei!"
+	"Lovecraft"
+	"Ph'nglui"
+	"Cthulhu"
+	"Wgah'nagl"
+	"Deep Ones"
+	"fhtagn"
+	"Crowley"
+	"Old Ones"
+	"Serious"
+	"something"
+	"Vancouver"
+	"Arlyeh"
+	"Yuggoth"
+	"Aleister"
+	"Davar"
+	"Azathoth"
+	"Ia! Ia!"
+	"R'lyeh"
+	"BigBoote"))
+
 (defvar *last-log*)
 (defvar *score*)
 (defvar *last-bonus*)
@@ -12,6 +34,7 @@
 (defvar *last-clear-lines*)
 (defvar *curr-unit-no*)
 
+(defvar *power-moves*)
 (defvar *last-full-move*)
 (defvar *found-words*)
 (defvar *last-power-bonus*)
@@ -41,9 +64,16 @@
 	  (*last-bonus* 0)
 	  (*last-clear-no* -100)
 	  (*last-clear-lines* 0)
-	  (*curr-unit-no* 0))
+	  (*curr-unit-no* 0)
+	  (*last-full-move* nil)
+	  (*found-words* nil)
+	  (*power-moves* (mapcar #'decode-word *power-words*)))
       (when (or (not filter-seed) (eql seed filter-seed))
 	(run-gui board (lambda () (funcall solver board)))))))
+
+(defun decode-word (word)
+  (loop as i below (length word)
+    collect (decode-move word i)))
 
 (defun decode-move (solution index)
   (when (>= index (length solution))
@@ -93,7 +123,7 @@
 
 (defun calc-power-bonus ()
   (let ((power-bonus 0))
-    (dolist (power-word *power-words*)
+    (dolist (power-word *power-moves*)
       (let ((repeats (find-ocurrences power-word *last-full-move*)))
 	(incf power-bonus (* 2 repeats (length power-word)))
 	(when (and (> repeats 0)

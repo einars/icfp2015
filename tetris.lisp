@@ -135,8 +135,9 @@
 	(t (is-row-full row board (1+ i)))))
 
 (defun delete-row (row board)
-  (when (>= row solver::*watershed*)
-      (setf solver::*watershed* (1+ row)))
+  (when (and (boundp '*watershed*)
+	     (>= row *watershed*))
+    (setf *watershed* (1+ row)))
   (incf (board-lines board))
   (let ((grid (board-grid board)))
     (dotimes (x row)
