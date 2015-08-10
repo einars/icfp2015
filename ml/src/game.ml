@@ -38,6 +38,24 @@ let blank_hash = Set.empty ~comparator:String.comparator
 let ignored fn = fun x -> ignore(fn x)
 
 
+let update_height_hint state = 
+  let pref_row = ref (
+    match Array.findi state.repr (fun i x -> x) with
+    | None -> state.height
+    | Some (i,_) -> (i / state.width)
+  ) in
+
+  List.iter state.diff ~f:(function
+    | ColumnDrop n -> pref_row := max n !pref_row
+    | _ -> ()
+  );
+
+  { state with height_hint = max state.height_hint !pref_row }
+;;
+
+
+  
+
 
 type procesing_t = Finalizing of state_t | Running of state_t | Borkbork
 
@@ -67,8 +85,8 @@ let is_live_state state = match state.diff with
 ;;
 
 let moved_fig_pos state = match state.diff with
-  | (LivePlacement (fig, _)) :: _ -> fig.members
-  | _ -> []
+  | (LivePlacement (fig, _)) :: _ -> fig.members, fig.perimeter
+  | _ -> [], []
 ;;
 
 let figure_hash fig =
@@ -112,6 +130,7 @@ let initial_figure_offset state fig =
 let offset_fig fig (xoffs,yoffs) =
   let px, py = fig.pivot in
   { members = List.map fig.members ~f:(fun (x,y) -> (x + xoffs), (y + yoffs) )
+  ; perimeter = List.map fig.perimeter ~f:(fun (x,y) -> (x + xoffs), (y + yoffs) )
   ; pivot   = (px + xoffs), (py + yoffs)
   }
 ;;
@@ -287,24 +306,6 @@ let initial_hash state =
 
 
 
-let global_dupes = ref blank_hash
-let state_hash state =
-  let repr = Array.copy state.repr in
-  List.iter (moved_fig_pos state) ~f:(fun (x,y) -> repr.(y * state.width + x) <- true);
-  String.concat (List.map (Array.to_list repr) ~f:(fun x -> if x then "i" else "o"))
-;;
-
-let global_dup_removal = function
-  | Finalizing st ->
-      let hash = state_hash st in
-      if Set.mem !global_dupes hash then Borkbork
-      else (
-        global_dupes := Set.add !global_dupes hash;
-        Finalizing st
-      )
-  | foo -> foo
-;;
-
 
 let apply_move state (move:ext_move_t) ref_hashes =
   match state.diff with 
@@ -434,10 +435,72 @@ let take_json_cells json field = Yojson.Basic.Util.(
 let state_heuristic state =
 
   (* let is_live = is_live_state state in *)
-  let moved_pos = moved_fig_pos state in
+  let moved_pos, moved_perim = moved_fig_pos state in
+
+
+  let prefered_row () =
+    match Array.findi state.repr (fun i x -> x) with
+    | None -> state.height
+    | Some (i,_) -> (i / state.width)
+  in
+
+
+  let pref_row =  state.height_hint in
 
 
   let totes = ref 0 in
+
+  List.iter moved_perim ~f:(fun pt -> if pt_solid state pt then totes := !totes + 1);
+
+  let lines_made = ref 0 in
+  List.iter moved_pos ~f:(fun (x,y) ->
+    (* ineffective *)
+    let n_filled = ref 0 in
+    for i = 0 to state.width do
+      if pt_solid state (i,y) then n_filled := !n_filled + 1;
+    done;
+    if !n_filled = state.width then lines_made := !lines_made + 1;
+  );
+  if !lines_made > 0 then (
+    (*
+    printf "Lines made %d\n" !lines_made;
+    print_state state;
+    *)
+    totes := !totes + !lines_made * 1000;
+  );
+
+  List.iter moved_pos  ~f:( fun (x,y) ->
+      let pt = x,y in
+      (* printf "(totsing %d %d)\n" x y; *)
+      let row_diff = abs (y - pref_row) in
+      if (y < pref_row)    then totes := !totes - row_diff * 5
+      else if y = pref_row then totes := !totes + 30
+      else if y > pref_row then totes := !totes - row_diff
+  );
+
+  (* printf "TOTES = [[[ %d ]]]\n" !totes; *)
+
+  (* print_state state; *)
+
+      (*
+      if y > !max_y then max_y := y;
+      *)
+
+
+
+
+  (*
+  for y = state.height - 1 downto 0 do
+    let tot = ref 0 in
+    for x = 0 to state.width - 1 do
+      if pt_solid_live state (x,y) then tot := !tot + 1;
+    done;
+    if (!tot = state.width) then (
+      totes := !totes + 1000;
+    )
+  done;
+  *)
+
   (*
 
   let max_interesting_row = ref (state.height - 1) in
@@ -486,7 +549,6 @@ let state_heuristic state =
   totes := !totes - !penalty;
 
 
-  *)
   let solid = pt_solid_live state
   and free = (fun pt -> not (pt_solid_live state pt)) in
 
@@ -502,15 +564,21 @@ let state_heuristic state =
       (*
       if y > !max_y then max_y := y;
       *)
-      totes := !totes + 2 * y;
+      if y >= pref_row 
+      then totes := !totes + (state.height - y)(* + 1 * (state.height - (y - pref_row)) *)
+      else totes := !totes - state.height * (pref_row - y);
 
+      (*
       if (free ((x - 1),y)) && solid ((x - 2),y) then totes := !totes - 1;
       if (free ((x + 1),y)) && solid ((x + 2),y) then totes := !totes - 1;
+      *)
 
       if (free sw) && (solid (move_e sw)) && (solid (move_w sw)) then totes := !totes - 2;
       if (free se) && (solid (move_e se)) && (solid (move_w se)) then totes := !totes - 2;
 
+      (*
       if (free sw) && (free se) then totes := !totes - 2;
+      *)
 
       if (free sw) && (free swsw) && (solid (move_e sw)) && (solid (move_w sw))
       &&                             (solid (move_e swsw)) && (solid (move_w swsw))
@@ -522,6 +590,7 @@ let state_heuristic state =
 
   );
   totes := !totes + !max_y;
+  *)
 
 
   (*
@@ -560,8 +629,39 @@ let take_some_states n (l:'a list) =
 
 
 
+module Pt = Comparator.Make(struct
+  type t = cell_t
+  let compare (x1,y1) (x2,y2) = if x1 = x2 then y2 - y1 else x2 - x1
+  (* how can this be better? *)
+  let sexp_of_t = fun (x,y) -> String.sexp_of_t (sprintf "%d:%d" x y)
+end)
+
+let blank_pointset = Set.empty ~comparator:Pt.comparator
+
+let make_perimeter cells = 
+
+  let with_point pt set = Set.add set pt in
+
+  let rec rec_gather accum = function
+    | pt :: rest -> 
+        rec_gather (
+        with_point (move_e pt) (
+        with_point (move_w pt) (
+        with_point (move_se pt) (
+        with_point (move_ne pt) (
+        with_point (move_sw pt) (
+        with_point (move_nw pt) accum)))))) rest
+    | [] -> accum
+  in
+  (* todo: remove figure-points *)
+  Set.to_list ( rec_gather blank_pointset cells )
+;;
+
+
+
 let make_figure json_fig =
   { members = take_json_cells json_fig "members"
+  ; perimeter = take_json_cells json_fig "members" |> make_perimeter
   ; pivot = take_json_cell json_fig "pivot"
   }
 ;;
@@ -605,8 +705,9 @@ let states_of_json json = Yojson.Basic.Util.(
     initial_seed = 0;
     seed = 0;
     diff = [];
-    repr = make_initial_repr w h filled
-  } |> readjust_figures  in
+    repr = make_initial_repr w h filled;
+    height_hint = 0;
+  } |> readjust_figures |> update_height_hint in
 
   List.map source_seeds ~f:(fun (seed) ->
     { base_state with
@@ -624,7 +725,7 @@ let lock_with_move ((state:state_t),(move:ext_move_t)) =
   if fst move = NOP then state
   else match state.diff with
   | (LivePlacement (fig, moves) :: rest) ->
-      { state with diff = (LockedPlacement (fig, (move :: moves))) :: rest } |> maybe_drop |> pick_new_or_finalize
+      { state with diff = (LockedPlacement (fig, (move :: moves))) :: rest } |> maybe_drop |> pick_new_or_finalize |> update_height_hint
   | _ -> failwith "lock_with_move, unexpected diff/state"
 ;;
 

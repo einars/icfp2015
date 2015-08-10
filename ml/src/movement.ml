@@ -64,26 +64,32 @@ let moved_fig fig = function
   | MOVE_E ->
       { pivot = move_e fig.pivot
       ; members = List.map fig.members ~f:move_e
+      ; perimeter = List.map fig.perimeter ~f:move_e
       }
   | MOVE_W ->
       { pivot = move_w fig.pivot
       ; members = List.map fig.members ~f:move_w
+      ; perimeter = List.map fig.perimeter ~f:move_w
       }
   | MOVE_SE ->
       { pivot = move_se fig.pivot
       ; members = List.map fig.members ~f:move_se
+      ; perimeter = List.map fig.perimeter ~f:move_se
       }
   | MOVE_SW ->
       { pivot = move_sw fig.pivot
       ; members = List.map fig.members ~f:move_sw
+      ; perimeter = List.map fig.perimeter ~f:move_sw
       }
   | TURN_CW ->
       { pivot = fig.pivot
       ; members = List.map fig.members ~f:(fun pt -> turn_cw fig.pivot pt)
+      ; perimeter = List.map fig.perimeter ~f:(fun pt -> turn_cw fig.pivot pt)
       }
   | TURN_CCW ->
       { pivot = fig.pivot
       ; members = List.map fig.members ~f:(fun pt -> turn_ccw fig.pivot pt)
+      ; perimeter = List.map fig.perimeter ~f:(fun pt -> turn_ccw fig.pivot pt)
       }
   | NOP -> failwith "Unexpected NOP"
 

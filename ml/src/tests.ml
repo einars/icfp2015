@@ -24,25 +24,29 @@ let run_test_suite () =
   let fig_X =
     { members = [0,0]
     ; pivot   = 0,0
+    ; perimeter = []
   } in
 
   let fig_XX =
     { members = [0,0; 1,0]
     ; pivot   = 0,0
+    ; perimeter = []
   } in
 
   let fig_XX_offpiv =
     { members = [2,0; 3,0]
     ; pivot   = 0,0
+    ; perimeter = []
   } in
 
   let fig_XXX =
     { members = [0,0; 1,0; 2,0]
     ; pivot   = 0,0
+    ; perimeter = []
   } in
 
   let fd_4x4t = { fd_4x4 with diff = [
-    (LockedPlacement ({ pivot = 0,0; members = [(0,0); (1,1)] }, []))
+    (LockedPlacement ({ pivot = 0,0; members = [(0,0); (1,1)]; perimeter = [] }, []))
     ] } |> maybe_drop in
 
 
@@ -57,7 +61,7 @@ let run_test_suite () =
      * XXXX
      *
      * *)
-    [(LockedPlacement ({ pivot = 0,0; members = [(0,1); (1,1); (2,1); (3,1); (1,0); (2,0) ] }, [])) ]
+    [(LockedPlacement ({ pivot = 0,0; members = [(0,1); (1,1); (2,1); (3,1); (1,0); (2,0) ]; perimeter = [] }, [])) ]
     } |> maybe_drop in
 
   assert ( false = pt_solid fd_4x4drop (0,0) );
@@ -75,7 +79,7 @@ let run_test_suite () =
      * XXXX
      *
      * *)
-    [(LockedPlacement ({ pivot = 0,0; members = [(0,3); (1,3); (2,3); (3,3); (1,2); (2,2) ] }, [])) ]
+    [(LockedPlacement ({ pivot = 0,0; members = [(0,3); (1,3); (2,3); (3,3); (1,2); (2,2) ]; perimeter = [] }, [])) ]
     } |> maybe_drop in
   assert ( false = pt_solid fd_4x4drop (0,2) );
   assert ( false = pt_solid fd_4x4drop (1,2) );

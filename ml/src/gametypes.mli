@@ -2,6 +2,7 @@ type cell_t = int * int
 
 type figure_t =
   { members: cell_t list
+  ; perimeter: cell_t list
   ; pivot: cell_t
   }
 
@@ -26,5 +27,6 @@ type state_t =
   ; sourcelength: int
   ; diff: diff_t list
   ; repr: bool array
+  ; height_hint: int
 }
 
