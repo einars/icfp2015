@@ -86,7 +86,23 @@
 
 
 (defparameter *power-patterns*
-  '(((:SW) . ("Ei!" :E :SW :W))))
+  '(((:SW)    . ("Ei!" :E :SW :W))
+    ((:SE :W) . ("Ei!" :E :SW :W))
+    ((:W :SE) . ("Ei!" :E :SW :W))
+
+    ((:W :SW :SW :SW :SW :SW) . ("Ia! Ia!" :SW :SW :W :SE :SW :SW :W))
+    ((:SW :W :SW :SW :SW :SW) . ("Ia! Ia!" :SW :SW :W :SE :SW :SW :W))
+    ((:SW :SW :W :SW :SW :SW) . ("Ia! Ia!" :SW :SW :W :SE :SW :SW :W))
+    ((:SW :SW :SW :W :SW :SW) . ("Ia! Ia!" :SW :SW :W :SE :SW :SW :W))
+    ((:SW :SW :SW :SW :W :SW) . ("Ia! Ia!" :SW :SW :W :SE :SW :SW :W))
+    ((:SW :SW :SW :SW :SW :W) . ("Ia! Ia!" :SW :SW :W :SE :SW :SW :W))
+    ))
+
+; "ia! ia!"
+; "r'lyeh"
+; "yogsothoth"
+; "yuggoth"
+; "ei!"
 
 (defun match-start (word path)
   (cond ((null word) path)

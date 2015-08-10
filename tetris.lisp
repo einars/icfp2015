@@ -327,16 +327,22 @@
 
 (defvar *out* *standard-output*)
 
-(defun print-solution (board)
-  (dolist (cmd (reverse (board-cmd board)))
-    (format *out* "~A" (pretty-cmd cmd))))
+(defun print-solution (cmds)
+  (cond ((null cmds))
+	((symbolp (first cmds))
+	 (format *out* "~A" (pretty-cmd (first cmds)))
+	 (print-solution (rest cmds)))
+	((stringp (first cmds))
+	 (format *out* "~A" (first cmds))
+	 (print-solution (subseq cmds (1+ (length (first cmds))))))
+	(t (error "Command sequence error!"))))
 
 (defun format-solution (id seed board)
   (format *out* "[ { \"problemId\": ~A~%" id)
   (format *out* "  , \"seed\": ~A~%" seed)
   (format *out* "  , \"tag\": \"~A\"~%" (get-tag))
   (format *out* "  , \"solution\": \"")
-  (print-solution board)
+  (print-solution (reverse (board-cmd board)))
   (format *out* "\"~%  }~%")
   (format *out* "]~%"))
 
@@ -429,6 +435,7 @@
       (run-gui board (lambda () (get-solution board)))))
 
 (defun default-solver (id seed board with-gui)
+  (declare (ignore id seed))
   (solution-with-gui board with-gui))
 
 (defun solve-problem (number &key with-gui (solver #'default-solver))
