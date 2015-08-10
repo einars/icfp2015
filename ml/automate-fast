@@ -37,11 +37,13 @@ test -f $copy && exit 200
 
 cp play_icfp2015 $copy
 
+# 24 excl
 fast="0 1 8 9 10 11 12 13 15 16 17 18 19 20 21 22 23"
+notfast="2 3 4 5 6 7 14"
 med="0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23"
 most=$(seq 0 23)
 
-for i in $most; do
+for i in $notfast; do
   json=submissions/p.$i.$tag.json
   echo "Solving $i to $json"
   test -f $json && printf "File $json already exists"
